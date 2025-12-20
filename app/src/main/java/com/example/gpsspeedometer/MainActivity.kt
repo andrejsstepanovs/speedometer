@@ -20,7 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme // Added MaterialTheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -212,7 +212,6 @@ fun SpeedometerScreen(
 ) {
     val statusColor = if (satellites >= 3) Color.Green else Color.Red
 
-    // Standard Box layout: Children overlap, aligned to specific positions
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -254,7 +253,7 @@ fun SpeedometerScreen(
                 )
             }
 
-            // --- CENTER: Speedometer (Updated with MaterialTheme) ---
+            // --- CENTER: Speedometer ---
             Column(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -264,21 +263,22 @@ fun SpeedometerScreen(
                 val intPart = parts[0]
                 val decPart = if (parts.size > 1) parts[1] else "00"
 
-                Row(
-                    verticalAlignment = Alignment.Bottom
-                ) {
-                    // Integer Part: Giant "Hero" text
+                // Removed 'verticalAlignment = Alignment.Bottom'
+                // Added 'Modifier.alignByBaseline()' to every child Text
+                Row {
+                    // Integer Part
                     Text(
                         text = intPart,
                         style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = 120.sp, // Fixed "Hero" size
+                            fontSize = 120.sp, 
                             fontWeight = FontWeight.Bold,
                             letterSpacing = (-4).sp,
                             color = Color.White
-                        )
+                        ),
+                        modifier = Modifier.alignByBaseline() // FIX: Aligns to text baseline
                     )
                     
-                    // Decimal Part: Smaller headline style
+                    // Decimal Part
                     Text(
                         text = ".$decPart",
                         style = MaterialTheme.typography.headlineMedium.copy(
@@ -286,19 +286,21 @@ fun SpeedometerScreen(
                             fontWeight = FontWeight.Bold,
                             color = Color.LightGray
                         ),
-                        modifier = Modifier.padding(bottom = 12.dp) // Align baselines
+                        modifier = Modifier
+                            .alignByBaseline() // FIX: Aligns to text baseline
+                            .padding(start = 2.dp) // Little breathing room
                     )
 
                     Spacer(modifier = Modifier.width(4.dp))
 
-                    // Unit: Matches decimal style but simpler
+                    // Unit
                     Text(
                         text = "km/h",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = 24.sp,
                             color = Color.DarkGray
                         ),
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        modifier = Modifier.alignByBaseline() // FIX: Aligns to text baseline
                     )
                 }
             }
@@ -315,8 +317,6 @@ fun SpeedometerScreen(
 
                 StatRow(label = "top speed", value = "%.1f".format(maxSpeed))
                 StatRow(label = "top satellites", value = "$topSatellites")
-                
-                // Disclaimer removed here to save vertical space
             }
         }
     }
