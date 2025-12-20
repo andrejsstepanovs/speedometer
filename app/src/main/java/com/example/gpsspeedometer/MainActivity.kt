@@ -15,6 +15,7 @@ import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels // Required for ViewModel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
@@ -29,25 +30,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.max
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var locationManager: LocationManager
     
-    // State variables
-    private var currentSpeedKmh by mutableFloatStateOf(0f)
-    private var maxSpeedKmh by mutableFloatStateOf(0f)
-    private var satelliteCount by mutableIntStateOf(0)
-    private var maxSatelliteCount by mutableIntStateOf(0)
-    private var errorMessage by mutableStateOf<String?>(null)
+    // The ViewModel holds our data now
+    private val viewModel: SpeedometerViewModel by viewModels()
     
-    // Logic control
-    private var appStartTime = 0L
-    private var lastFixTime = 0L
+    private var watchdogJob: Job? = null
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -56,10 +51,10 @@ class MainActivity : ComponentActivity() {
         val coarseLocation = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
 
         if (fineLocation) {
-            errorMessage = null
+            viewModel.errorMessage = null
             startTracking()
         } else {
-            errorMessage = if (coarseLocation) {
+            viewModel.errorMessage = if (coarseLocation) {
                 "Precise Location required for GPS speed accuracy.\nPlease allow 'Precise' in settings."
             } else {
                 "Location permission denied.\nApp requires GPS access to function."
@@ -69,38 +64,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        appStartTime = SystemClock.elapsedRealtime()
-
-        checkPermissionsAndStart()
-        startWatchdog()
-
-        setContent {
-            SpeedometerScreen(
-                currentSpeed = currentSpeedKmh,
-                maxSpeed = maxSpeedKmh,
-                satellites = satelliteCount,
-                topSatellites = maxSatelliteCount,
-                error = errorMessage
-            )
-        }
-    }
-
-    private fun startWatchdog() {
-        lifecycleScope.launch {
-            while (isActive) {
-                delay(1000)
-                val timeSinceLastFix = SystemClock.elapsedRealtime() - lastFixTime
-                // Tunnel Detection: If no data for > 2s, force speed to 0
-                if (lastFixTime > 0 && timeSinceLastFix > 2000 && currentSpeedKmh > 0) {
-                    currentSpeedKmh = 0f
-                }
-            }
-        }
-    }
-
-    private fun checkPermissionsAndStart() {
+        
+        // Initial permission check (just UI logic, not starting GPS)
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
             != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(
@@ -109,7 +75,59 @@ class MainActivity : ComponentActivity() {
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 )
             )
-        } else {
+        }
+
+        setContent {
+            SpeedometerScreen(
+                currentSpeed = viewModel.currentSpeedKmh,
+                maxSpeed = viewModel.maxSpeedKmh,
+                satellites = viewModel.satelliteCount,
+                topSatellites = viewModel.maxSatelliteCount,
+                error = viewModel.errorMessage
+            )
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        checkPermissionsAndStart()
+        startWatchdog()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // 1. Always stop hardware to save battery
+        stopGpsHardware()
+        stopWatchdog()
+
+        // 2. ONLY wipe data if we are NOT rotating
+        if (!isChangingConfigurations) {
+            viewModel.resetSession()
+        }
+    }
+
+    private fun startWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = lifecycleScope.launch {
+            while (isActive) {
+                delay(1000)
+                val timeSinceLastFix = SystemClock.elapsedRealtime() - viewModel.lastFixTime
+                // Tunnel Detection: If no data for > 2s, force speed to 0
+                if (viewModel.lastFixTime > 0 && timeSinceLastFix > 2000 && viewModel.currentSpeedKmh > 0) {
+                    viewModel.currentSpeedKmh = 0f
+                }
+            }
+        }
+    }
+
+    private fun stopWatchdog() {
+        watchdogJob?.cancel()
+        watchdogJob = null
+    }
+
+    private fun checkPermissionsAndStart() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
+            == PackageManager.PERMISSION_GRANTED) {
             startTracking()
         }
     }
@@ -118,8 +136,13 @@ class MainActivity : ComponentActivity() {
     private fun startTracking() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
             != PackageManager.PERMISSION_GRANTED) {
-             errorMessage = "Permission missing."
              return
+        }
+
+        // Only reset start time if this is a "fresh" start (not a rotation)
+        // If speed is 0 and max is 0, we assume it's a new session
+        if (viewModel.appStartTime == 0L || viewModel.maxSpeedKmh == 0f) {
+            viewModel.appStartTime = SystemClock.elapsedRealtime()
         }
 
         try {
@@ -134,23 +157,28 @@ class MainActivity : ComponentActivity() {
                 locationManager.registerGnssStatusCallback(gnssCallback, null)
             }
         } catch (e: Exception) {
-            errorMessage = "Error starting GPS: ${e.message}"
+            viewModel.errorMessage = "Error starting GPS: ${e.message}"
+        }
+    }
+
+    private fun stopGpsHardware() {
+        locationManager.removeUpdates(locationListener)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            try {
+                locationManager.unregisterGnssStatusCallback(gnssCallback)
+            } catch (e: IllegalArgumentException) { }
         }
     }
 
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
-            if (errorMessage != null) errorMessage = null
-            lastFixTime = SystemClock.elapsedRealtime()
+            if (viewModel.errorMessage != null) viewModel.errorMessage = null
+            viewModel.lastFixTime = SystemClock.elapsedRealtime()
 
             var newSpeed = 0f
-            
             if (location.hasSpeed()) {
                 val speedKmh = location.speed * 3.6f
-                
-                // --- NOISE FILTER FIX ---
-                // 1. Deadband: Ignore purely drift speeds (< 1.5 km/h)
-                // 2. Accuracy: Ignore updates with terrible horizontal accuracy (> 50m)
+                // Noise Filter
                 val isAccuracyAcceptable = !location.hasAccuracy() || location.accuracy < 50
                 val isSpeedSignificant = speedKmh > 1.5f
                 
@@ -158,21 +186,13 @@ class MainActivity : ComponentActivity() {
                     newSpeed = speedKmh
                 }
             }
-
-            currentSpeedKmh = newSpeed
-
-            // Max Speed Logic
-            val timeElapsed = SystemClock.elapsedRealtime() - appStartTime
-            if (timeElapsed > 5000 && satelliteCount >= 3) {
-                if (newSpeed > maxSpeedKmh) {
-                    maxSpeedKmh = newSpeed
-                }
-            }
+            // Delegate logic to ViewModel
+            viewModel.updateLocation(newSpeed, viewModel.satelliteCount)
         }
         override fun onProviderEnabled(provider: String) {}
         override fun onProviderDisabled(provider: String) {
             if (provider == LocationManager.GPS_PROVIDER) {
-                errorMessage = "GPS Provider is disabled."
+                viewModel.errorMessage = "GPS Provider is disabled."
             }
         }
         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
@@ -187,20 +207,13 @@ class MainActivity : ComponentActivity() {
                     count++
                 }
             }
-            satelliteCount = count
-            maxSatelliteCount = max(maxSatelliteCount, count)
-        }
-    }
-    
-    override fun onDestroy() {
-        super.onDestroy()
-        locationManager.removeUpdates(locationListener)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            locationManager.unregisterGnssStatusCallback(gnssCallback)
+            // Update VM
+            viewModel.updateLocation(viewModel.currentSpeedKmh, count)
         }
     }
 }
 
+// ... Copy SpeedometerScreen and StatRow functions here (unchanged) ...
 @Composable
 fun SpeedometerScreen(
     currentSpeed: Float,
