@@ -1,0 +1,49 @@
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log files
+*.log
+
+# Android Studio will place build/outputs/apk/ here
+*.apk
+*.ap_
+*.aab
+
+# Android Studio captures folder
+captures/
+
+# External native build folder generated in ndk-build runs
+.externalNativeBuild/
+
+# NDK code (CMake and ndk-build)
+.cxx/
+
+# Google Services (e.g. APIs or Firebase)
+# google-services.json is typically gitignored
+
+# IDE files
+.idea/
+*.iml
+misc.xml
+deploymentTargetDropDown.xml
+render.experimental.xml
+
+# Keystores
+*.jks
+*.keystore
+
+# Profiling files
+*.hprof
+
+# Output artifacts from build tools
+output-metadata.json
+
+app/release-key.jks
+
+*.jks
+*.keystore
+keystore.properties
