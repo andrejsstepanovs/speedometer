@@ -1,33 +1,48 @@
 # GPS Speedometer
 
-A minimalist Android application built with Kotlin and Jetpack Compose. Displays real-time GPS speed, satellite connection status, and conditional max speed tracking.
+A minimalist, privacy-focused Android speedometer built with Kotlin and Jetpack Compose. It provides real-time GPS data with a high-contrast HUD interface designed for readability.
 
 ## Motivation
 
 I got tired of dirty ad filled, user tracking, etc speedometer apps, so I made this simple one. Download the APK from Releases or build from source.
 
-
 ## Preview
 
 <p align="center">
-  <img src="screenshots/app_preview.jpg" width="500" alt="App Screenshot">
+  <img src="screenshots/app-preview.jpeg" width="300" alt="App Screenshot">
 </p>
 
 ## Features
 
-* **Real-time Speed:** Centered display in km/h (Large font).
-* **Satellite Status:** GNSS satellite count (used in fix) shown in top-left.
-* **Max Speed Tracking:** Shown in bottom-left.
-    * *Logic:* Updates only if `Uptime > 5 seconds` AND `Satellites >= 3`.
-* **Top Satellites:** Tracks maximum satellite count in session.
-* **UI:** High contrast (White text on Black background), muted units.
+* **Real-time Speed:** Centered display in km/h with dynamic font sizing to fit any screen width.
+* **Satellite Status:** Real-time GNSS satellite count with a color-coded status indicator (Red/Green).
+* **Session Statistics:**
+    * **Top Speed:** Tracks the maximum speed reached in the current session.
+    * **Top Satellites:** Tracks the maximum number of satellites connected.
+* **Smart Logic:**
+    * **5-Second Warmup:** Max speed tracking only begins 5 seconds after GPS lock to prevent initialization spikes.
+    * **Tunnel Detection:** Automatically resets speed to `0` if GPS data stops for >2 seconds.
+    * **Noise Filter:** Ignores "drift" speeds (< 1.5 km/h) and low-accuracy fixes (> 50m radius).
+* **Privacy & Cleanliness:**
+    * **No Ads:** Completely free and clean interface.
+    * **No Tracking:** No analytics, no data collection, no internet permission required.
+    * **No Background Drain:** App completely stops GPS usage when minimized to save battery.
+
+## Session Behavior
+
+> **Note:** This app is designed as an active dashboard.
+
+* **Active Only:** Speed and stats are tracked only while the screen is on and the app is visible.
+* **Auto-Reset:** Minimizing the app, turning off the screen, or switching apps **immediately wipes** all session data (current speed, max speed, satellite counts).
+* **Battery Safe:** The app aggressively disconnects from the GPS hardware the moment it loses focus.
 
 ## Tech Stack
 
 * **Language:** Kotlin
 * **UI Framework:** Jetpack Compose (Material3)
 * **API:** Android `LocationManager` & `GnssStatus` (Raw GPS access)
-* **Min SDK:** 24 (Required for `GnssStatus`)
+* **Architecture:** Lifecycle-aware components with Coroutines for watchdog timers.
+* **Min SDK:** 24
 * **Target SDK:** 34
 
 ## Build & Install (CLI)
@@ -42,16 +57,8 @@ I got tired of dirty ad filled, user tracking, etc speedometer apps, so I made t
     ```bash
     make install
     ```
-    *Or manually:* `./gradlew assembleRelease && adb install ...`
+    *Or manually:* `./gradlew assembleRelease && adb install -r app/build/outputs/apk/release/app-release.apk`
 
-## Logic Reference
+## License
 
-The core logic for the max speed filter is located in `MainActivity.kt`:
-
-```kotlin
-val timeElapsed = SystemClock.elapsedRealtime() - appStartTime
-if (timeElapsed > 5000 && satelliteCount >= 3) {
-    if (speedKmh > maxSpeedKmh) {
-        maxSpeedKmh = speedKmh
-    }
-}
+MIT

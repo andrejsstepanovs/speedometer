@@ -18,7 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
-import androidx.compose.material3.Divider // Changed from HorizontalDivider
+import androidx.compose.material3.Divider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +28,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlin.math.max
 
 class MainActivity : ComponentActivity() {
@@ -43,6 +47,7 @@ class MainActivity : ComponentActivity() {
     
     // Logic control
     private var appStartTime = 0L
+    private var lastFixTime = 0L
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -69,6 +74,7 @@ class MainActivity : ComponentActivity() {
         appStartTime = SystemClock.elapsedRealtime()
 
         checkPermissionsAndStart()
+        startWatchdog()
 
         setContent {
             SpeedometerScreen(
@@ -78,6 +84,19 @@ class MainActivity : ComponentActivity() {
                 topSatellites = maxSatelliteCount,
                 error = errorMessage
             )
+        }
+    }
+
+    private fun startWatchdog() {
+        lifecycleScope.launch {
+            while (isActive) {
+                delay(1000)
+                val timeSinceLastFix = SystemClock.elapsedRealtime() - lastFixTime
+                // Tunnel Detection: If no data for > 2s, force speed to 0
+                if (lastFixTime > 0 && timeSinceLastFix > 2000 && currentSpeedKmh > 0) {
+                    currentSpeedKmh = 0f
+                }
+            }
         }
     }
 
@@ -122,14 +141,31 @@ class MainActivity : ComponentActivity() {
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
             if (errorMessage != null) errorMessage = null
+            lastFixTime = SystemClock.elapsedRealtime()
 
-            val speedKmh = if (location.hasSpeed()) location.speed * 3.6f else 0f
-            currentSpeedKmh = speedKmh
+            var newSpeed = 0f
+            
+            if (location.hasSpeed()) {
+                val speedKmh = location.speed * 3.6f
+                
+                // --- NOISE FILTER FIX ---
+                // 1. Deadband: Ignore purely drift speeds (< 1.5 km/h)
+                // 2. Accuracy: Ignore updates with terrible horizontal accuracy (> 50m)
+                val isAccuracyAcceptable = !location.hasAccuracy() || location.accuracy < 50
+                val isSpeedSignificant = speedKmh > 1.5f
+                
+                if (isAccuracyAcceptable && isSpeedSignificant) {
+                    newSpeed = speedKmh
+                }
+            }
 
+            currentSpeedKmh = newSpeed
+
+            // Max Speed Logic
             val timeElapsed = SystemClock.elapsedRealtime() - appStartTime
             if (timeElapsed > 5000 && satelliteCount >= 3) {
-                if (speedKmh > maxSpeedKmh) {
-                    maxSpeedKmh = speedKmh
+                if (newSpeed > maxSpeedKmh) {
+                    maxSpeedKmh = newSpeed
                 }
             }
         }
@@ -190,7 +226,6 @@ fun SpeedometerScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            // FIX: Calculate raw value first to avoid Type Mismatch (TextUnit vs Dp)
             val baseVal = maxWidth.value / 3.5f
             val baseFontSize = baseVal.sp
             val basePadding = (baseVal * 0.1f).dp
@@ -249,10 +284,10 @@ fun SpeedometerScreen(
                     Text(
                         text = ".$decPart",
                         color = Color.LightGray, 
-                        fontSize = (baseVal * 0.5f).sp, // Fixed math
+                        fontSize = (baseVal * 0.5f).sp, 
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = basePadding) // Fixed padding type
+                        modifier = Modifier.padding(bottom = basePadding) 
                     )
 
                     Spacer(modifier = Modifier.width(basePadding))
@@ -260,7 +295,7 @@ fun SpeedometerScreen(
                     Text(
                         text = "km/h",
                         color = Color.DarkGray,
-                        fontSize = (baseVal * 0.25f).sp, // Fixed math
+                        fontSize = (baseVal * 0.25f).sp, 
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         modifier = Modifier.padding(bottom = basePadding)
                     )
@@ -271,7 +306,6 @@ fun SpeedometerScreen(
             Column(
                 modifier = Modifier.align(Alignment.BottomStart)
             ) {
-                // FIX: Replaced HorizontalDivider with Divider for compatibility
                 Divider(
                     modifier = Modifier.width(150.dp).padding(bottom = 12.dp),
                     thickness = 1.dp,
