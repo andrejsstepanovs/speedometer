@@ -47,3 +47,5 @@ app/release-key.jks
 *.jks
 *.keystore
 keystore.properties
+
+.vscode/
