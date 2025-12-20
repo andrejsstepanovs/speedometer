@@ -8,7 +8,7 @@ I got tired of dirty ad filled, user tracking, etc speedometer apps, so I made t
 
 ## Installation
 
-Download and install the APK from (Releases)[https://github.com/andrejsstepanovs/speedometer/releases/latest] or build from source.
+Download and install the APK from [Releases](https://github.com/andrejsstepanovs/speedometer/releases/latest) or build from source.
 
 ## Features
 
