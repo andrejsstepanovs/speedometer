@@ -6,6 +6,10 @@ A minimalist, privacy-focused Android speedometer built with Kotlin and Jetpack 
 
 I got tired of dirty ad filled, user tracking, etc speedometer apps, so I made this simple one. Download the APK from Releases or build from source.
 
+## Installation
+
+Download and install the APK from (Releases)[https://github.com/andrejsstepanovs/speedometer/releases/latest] or build from source.
+
 ## Features
 
 * **Real-time Speed:** Centered display in km/h with dynamic font sizing to fit any screen width.
