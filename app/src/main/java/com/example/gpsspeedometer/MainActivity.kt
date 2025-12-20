@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
+import kotlin.math.max
 
 class MainActivity : ComponentActivity() {
 
@@ -34,11 +35,11 @@ class MainActivity : ComponentActivity() {
     private var currentSpeedKmh by mutableFloatStateOf(0f)
     private var maxSpeedKmh by mutableFloatStateOf(0f)
     private var satelliteCount by mutableIntStateOf(0)
+    private var maxSatelliteCount by mutableIntStateOf(0)
     
     // Logic control
     private var appStartTime = 0L
 
-    // Permission launcher
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -59,7 +60,8 @@ class MainActivity : ComponentActivity() {
             SpeedometerScreen(
                 currentSpeed = currentSpeedKmh,
                 maxSpeed = maxSpeedKmh,
-                satellites = satelliteCount
+                satellites = satelliteCount,
+                topSatellites = maxSatelliteCount
             )
         }
     }
@@ -80,15 +82,13 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("MissingPermission")
     private fun startTracking() {
-        // 1. Request Location Updates
         locationManager.requestLocationUpdates(
             LocationManager.GPS_PROVIDER,
-            0L, // Min time
-            0f, // Min distance
+            0L, 
+            0f, 
             locationListener
         )
 
-        // 2. Register GNSS Status for Satellite count (API 24+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             locationManager.registerGnssStatusCallback(gnssCallback, null)
         }
@@ -96,13 +96,10 @@ class MainActivity : ComponentActivity() {
 
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
-            // Speed comes in m/s, convert to km/h
             val speedKmh = if (location.hasSpeed()) location.speed * 3.6f else 0f
             currentSpeedKmh = speedKmh
 
-            // Max Speed Logic:
-            // 1. App running > 5 seconds
-            // 2. Satellites >= 3
+            // Max Speed Logic: > 5 seconds uptime AND >= 3 satellites
             val timeElapsed = SystemClock.elapsedRealtime() - appStartTime
             if (timeElapsed > 5000 && satelliteCount >= 3) {
                 if (speedKmh > maxSpeedKmh) {
@@ -110,7 +107,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        // No-ops for status changes/provider enable/disable
         override fun onProviderEnabled(provider: String) {}
         override fun onProviderDisabled(provider: String) {}
         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
@@ -126,6 +122,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
             satelliteCount = count
+            // Track max satellites immediately (no 5s delay needed for signal quality stats)
+            maxSatelliteCount = max(maxSatelliteCount, count)
         }
     }
     
@@ -139,7 +137,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun SpeedometerScreen(currentSpeed: Float, maxSpeed: Float, satellites: Int) {
+fun SpeedometerScreen(
+    currentSpeed: Float, 
+    maxSpeed: Float, 
+    satellites: Int,
+    topSatellites: Int
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -148,27 +151,50 @@ fun SpeedometerScreen(currentSpeed: Float, maxSpeed: Float, satellites: Int) {
     ) {
         // Top Left: Satellite Count
         Text(
-            text = "SAT: $satellites",
+            text = "satellites: $satellites",
             color = Color.White,
             fontSize = 24.sp,
             modifier = Modifier.align(Alignment.TopStart)
         )
 
-        // Center: Current Speed
-        Text(
-            text = "%.0f km/h".format(currentSpeed),
-            color = Color.White,
-            fontSize = 96.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.Center)
-        )
+        // Center: Current Speed + Unit
+        // Using a Row to align the number and unit nicely
+        Row(
+            modifier = Modifier.align(Alignment.Center),
+            verticalAlignment = Alignment.Bottom // Aligns the text to the bottom baseline
+        ) {
+            Text(
+                text = "%.0f".format(currentSpeed),
+                color = Color.White,
+                fontSize = 96.sp,
+                fontWeight = FontWeight.Bold,
+                // Fix for font padding issues on large text
+                lineHeight = 96.sp 
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "km/h",
+                color = Color.Gray,
+                fontSize = 32.sp, // 96 / 3 = 32
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.padding(bottom = 12.dp) // Slight lift to align with baseline visual
+            )
+        }
 
-        // Bottom Left: Max Speed
-        Text(
-            text = "MAX: %.1f".format(maxSpeed),
-            color = Color.White,
-            fontSize = 24.sp,
+        // Bottom Left: Stats Column
+        Column(
             modifier = Modifier.align(Alignment.BottomStart)
-        )
+        ) {
+            Text(
+                text = "top speed: %.1f".format(maxSpeed),
+                color = Color.White,
+                fontSize = 24.sp
+            )
+            Text(
+                text = "top satellites: $topSatellites",
+                color = Color.White,
+                fontSize = 24.sp
+            )
+        }
     }
 }

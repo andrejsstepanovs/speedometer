@@ -2,13 +2,25 @@
 
 A minimalist Android application built with Kotlin and Jetpack Compose. Displays real-time GPS speed, satellite connection status, and conditional max speed tracking.
 
+## Motivation
+
+I got tired of dirty ad filled, user tracking, etc speedometer apps, so I made this simple one. Download the APK from Releases or build from source.
+
+
+## Preview
+
+<p align="center">
+  <img src="screenshots/app_preview.jpg" width="500" alt="App Screenshot">
+</p>
+
 ## Features
 
-* **Real-time Speed:** Centered display in km/h.
+* **Real-time Speed:** Centered display in km/h (Large font).
 * **Satellite Status:** GNSS satellite count (used in fix) shown in top-left.
 * **Max Speed Tracking:** Shown in bottom-left.
     * *Logic:* Updates only if `Uptime > 5 seconds` AND `Satellites >= 3`.
-* **UI:** High contrast (White text on Black background).
+* **Top Satellites:** Tracks maximum satellite count in session.
+* **UI:** High contrast (White text on Black background), muted units.
 
 ## Tech Stack
 
@@ -18,14 +30,7 @@ A minimalist Android application built with Kotlin and Jetpack Compose. Displays
 * **Min SDK:** 24 (Required for `GnssStatus`)
 * **Target SDK:** 34
 
-## Permissions
-
-* `ACCESS_FINE_LOCATION`: Required for GPS provider speed and GNSS status.
-* `ACCESS_COARSE_LOCATION`: Legacy requirement for compatibility.
-
 ## Build & Install (CLI)
-
-Assumes `JAVA_HOME` and `ANDROID_HOME` are set.
 
 1.  **Clone**
     ```bash
@@ -33,21 +38,11 @@ Assumes `JAVA_HOME` and `ANDROID_HOME` are set.
     cd gps-speedometer
     ```
 
-2.  **Build Debug APK**
+2.  **Build & Install (Using Makefile)**
     ```bash
-    ./gradlew assembleDebug
+    make install
     ```
-
-3.  **Install to connected device**
-    ```bash
-    ./gradlew installDebug
-    ```
-
-4.  **Logcat Monitoring**
-    To view logs or debug output:
-    ```bash
-    adb logcat -s "MainActivity" "*:S"
-    ```
+    *Or manually:* `./gradlew assembleRelease && adb install ...`
 
 ## Logic Reference
 
