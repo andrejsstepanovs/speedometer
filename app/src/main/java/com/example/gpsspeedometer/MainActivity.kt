@@ -15,11 +15,12 @@ import android.os.SystemClock
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels // Required for ViewModel
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.material3.Divider
+import androidx.compose.material3.MaterialTheme // Added MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,10 +39,7 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
 
     private lateinit var locationManager: LocationManager
-    
-    // The ViewModel holds our data now
     private val viewModel: SpeedometerViewModel by viewModels()
-    
     private var watchdogJob: Job? = null
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -66,7 +64,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         
-        // Initial permission check (just UI logic, not starting GPS)
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
             != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(
@@ -96,11 +93,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        // 1. Always stop hardware to save battery
         stopGpsHardware()
         stopWatchdog()
 
-        // 2. ONLY wipe data if we are NOT rotating
         if (!isChangingConfigurations) {
             viewModel.resetSession()
         }
@@ -112,7 +107,6 @@ class MainActivity : ComponentActivity() {
             while (isActive) {
                 delay(1000)
                 val timeSinceLastFix = SystemClock.elapsedRealtime() - viewModel.lastFixTime
-                // Tunnel Detection: If no data for > 2s, force speed to 0
                 if (viewModel.lastFixTime > 0 && timeSinceLastFix > 2000 && viewModel.currentSpeedKmh > 0) {
                     viewModel.currentSpeedKmh = 0f
                 }
@@ -139,8 +133,6 @@ class MainActivity : ComponentActivity() {
              return
         }
 
-        // Only reset start time if this is a "fresh" start (not a rotation)
-        // If speed is 0 and max is 0, we assume it's a new session
         if (viewModel.appStartTime == 0L || viewModel.maxSpeedKmh == 0f) {
             viewModel.appStartTime = SystemClock.elapsedRealtime()
         }
@@ -178,7 +170,6 @@ class MainActivity : ComponentActivity() {
             var newSpeed = 0f
             if (location.hasSpeed()) {
                 val speedKmh = location.speed * 3.6f
-                // Noise Filter
                 val isAccuracyAcceptable = !location.hasAccuracy() || location.accuracy < 50
                 val isSpeedSignificant = speedKmh > 1.5f
                 
@@ -186,7 +177,6 @@ class MainActivity : ComponentActivity() {
                     newSpeed = speedKmh
                 }
             }
-            // Delegate logic to ViewModel
             viewModel.updateLocation(newSpeed, viewModel.satelliteCount)
         }
         override fun onProviderEnabled(provider: String) {}
@@ -207,13 +197,11 @@ class MainActivity : ComponentActivity() {
                     count++
                 }
             }
-            // Update VM
             viewModel.updateLocation(viewModel.currentSpeedKmh, count)
         }
     }
 }
 
-// ... Copy SpeedometerScreen and StatRow functions here (unchanged) ...
 @Composable
 fun SpeedometerScreen(
     currentSpeed: Float,
@@ -224,7 +212,8 @@ fun SpeedometerScreen(
 ) {
     val statusColor = if (satellites >= 3) Color.Green else Color.Red
 
-    BoxWithConstraints(
+    // Standard Box layout: Children overlap, aligned to specific positions
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
@@ -239,10 +228,6 @@ fun SpeedometerScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            val baseVal = maxWidth.value / 3.5f
-            val baseFontSize = baseVal.sp
-            val basePadding = (baseVal * 0.1f).dp
-            
             // --- TOP LEFT: Satellite Status ---
             Row(
                 modifier = Modifier.align(Alignment.TopStart),
@@ -269,7 +254,7 @@ fun SpeedometerScreen(
                 )
             }
 
-            // --- CENTER: Speedometer ---
+            // --- CENTER: Speedometer (Updated with MaterialTheme) ---
             Column(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -282,40 +267,43 @@ fun SpeedometerScreen(
                 Row(
                     verticalAlignment = Alignment.Bottom
                 ) {
+                    // Integer Part: Giant "Hero" text
                     Text(
                         text = intPart,
-                        color = Color.White,
-                        fontSize = baseFontSize, 
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-2).sp,
-                        lineHeight = baseFontSize,
-                        maxLines = 1,
-                        softWrap = false
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontSize = 120.sp, // Fixed "Hero" size
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-4).sp,
+                            color = Color.White
+                        )
                     )
                     
+                    // Decimal Part: Smaller headline style
                     Text(
                         text = ".$decPart",
-                        color = Color.LightGray, 
-                        fontSize = (baseVal * 0.5f).sp, 
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = basePadding) 
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 40.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.LightGray
+                        ),
+                        modifier = Modifier.padding(bottom = 12.dp) // Align baselines
                     )
 
-                    Spacer(modifier = Modifier.width(basePadding))
+                    Spacer(modifier = Modifier.width(4.dp))
 
+                    // Unit: Matches decimal style but simpler
                     Text(
                         text = "km/h",
-                        color = Color.DarkGray,
-                        fontSize = (baseVal * 0.25f).sp, 
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        modifier = Modifier.padding(bottom = basePadding)
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 24.sp,
+                            color = Color.DarkGray
+                        ),
+                        modifier = Modifier.padding(bottom = 12.dp)
                     )
                 }
             }
 
-            // --- BOTTOM: Stats Area ---
+            // --- BOTTOM LEFT: Stats Area ---
             Column(
                 modifier = Modifier.align(Alignment.BottomStart)
             ) {
@@ -328,13 +316,7 @@ fun SpeedometerScreen(
                 StatRow(label = "top speed", value = "%.1f".format(maxSpeed))
                 StatRow(label = "top satellites", value = "$topSatellites")
                 
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Session data: resets on app restart",
-                    color = Color.DarkGray,
-                    fontSize = 12.sp,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                )
+                // Disclaimer removed here to save vertical space
             }
         }
     }

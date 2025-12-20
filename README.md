@@ -6,12 +6,6 @@ A minimalist, privacy-focused Android speedometer built with Kotlin and Jetpack 
 
 I got tired of dirty ad filled, user tracking, etc speedometer apps, so I made this simple one. Download the APK from Releases or build from source.
 
-## Preview
-
-<p align="center">
-  <img src="screenshots/app-preview.jpeg" width="300" alt="App Screenshot">
-</p>
-
 ## Features
 
 * **Real-time Speed:** Centered display in km/h with dynamic font sizing to fit any screen width.
@@ -35,6 +29,15 @@ I got tired of dirty ad filled, user tracking, etc speedometer apps, so I made t
 * **Active Only:** Speed and stats are tracked only while the screen is on and the app is visible.
 * **Auto-Reset:** Minimizing the app, turning off the screen, or switching apps **immediately wipes** all session data (current speed, max speed, satellite counts).
 * **Battery Safe:** The app aggressively disconnects from the GPS hardware the moment it loses focus.
+
+## Preview
+
+<p align="center">
+  <img src="screenshots/app-preview-landscape.jpg" width="300" alt="App Screenshot Landscape"/>
+</p>
+<p align="center">
+  <img src="screenshots/app-preview-portrait.jpg" width="300" alt="App Screenshot Portrait"/>
+</p>
 
 ## Tech Stack
 
