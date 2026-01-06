@@ -113,18 +113,40 @@ try {
 ```
 
 ### Architecture Patterns
-- **MVVM**: MainActivity handles UI/lifecycle, ViewModel manages state/logic
-- **Lifecycle-aware**: Use `lifecycleScope.launch` for coroutines
-- **Compose**: Use `@Composable` functions for UI components
-- **Separation**: Private functions for internal logic, public for external interactions
+- **Clean Architecture**:
+    - **Domain Layer**: Pure Kotlin business logic, models, and interfaces (no Android dependencies).
+    - **Data Layer**: Repository implementations and data sources.
+    - **Presentation Layer**: UI (Compose) and ViewModel.
+- **MVVM**: MainActivity handles UI/lifecycle, ViewModel manages state/logic via Domain use cases.
+- **Lifecycle-aware**: Use `lifecycleScope.launch` for coroutines.
+- **Compose**: Use `@Composable` functions for UI components.
+- **Separation**: Private functions for internal logic, public for external interactions.
 
 ## Project Structure
 
 ```
 app/src/main/java/com/example/gpsspeedometer/
-├── MainActivity.kt          # Activity and UI composition
-├── SpeedometerViewModel.kt  # State management and business logic
-└── AndroidManifest.xml     # App configuration and permissions
+├── MainActivity.kt                    # Activity and UI composition
+├── SpeedometerViewModel.kt            # State management and UI logic
+├── domain/                          # Business logic (pure Kotlin)
+│   ├── model/                         # Data models
+│   │   ├── GpsReading.kt
+│   │   ├── SpeedometerState.kt
+│   │   ├── SessionConfig.kt
+│   │   └── SessionStatistics.kt
+│   ├── util/                          # Utilities
+│   │   └── SpeedConverter.kt
+│   ├── GpsSignalFilter.kt            # GPS signal validation
+│   ├── SessionStatisticsTracker.kt      # Session tracking logic
+│   └── TimeProvider.kt                # Time abstraction
+├── data/                           # Data layer
+│   ├── ProductionTimeProvider.kt         # Time implementation
+│   └── repository/                     # Repository pattern
+│       ├── LocationRepository.kt          # Repository interface
+│       └── LocationRepositoryImpl.kt     # Repository implementation
+├── di/                             # Dependency injection
+│   └── SpeedometerViewModelFactory.kt    # ViewModel factory
+└── AndroidManifest.xml               # App configuration and permissions
 ```
 
 ## Key Dependencies & Versions
