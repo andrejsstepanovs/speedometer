@@ -1,50 +1,61 @@
 package com.example.gpsspeedometer
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import kotlin.math.max
+import com.example.gpsspeedometer.domain.GpsSignalFilter
+import com.example.gpsspeedometer.domain.SessionStatisticsTracker
+import com.example.gpsspeedometer.domain.model.GpsReading
+import com.example.gpsspeedometer.domain.model.SessionConfig
+import com.example.gpsspeedometer.domain.model.SpeedometerState
 
-class SpeedometerViewModel : ViewModel() {
-
-    // State is now safe inside the ViewModel
-    var currentSpeedKmh by mutableFloatStateOf(0f)
-    var maxSpeedKmh by mutableFloatStateOf(0f)
-    var satelliteCount by mutableIntStateOf(0)
-    var maxSatelliteCount by mutableIntStateOf(0)
+class SpeedometerViewModel(
+    private val sessionTracker: SessionStatisticsTracker,
+    private val gpsSignalFilter: GpsSignalFilter
+) : ViewModel() {
+    
+    var state by mutableStateOf(SpeedometerState(0f, 0f, 0, 0))
+        private set
+    
     var errorMessage by mutableStateOf<String?>(null)
-
-    // Logic variables
-    var appStartTime = 0L
-    var lastFixTime = 0L
-
-    // Actions
-    fun updateLocation(speedKmh: Float, sats: Int) {
-        currentSpeedKmh = speedKmh
-        satelliteCount = sats
+        private set
+    
+    fun onGpsReadingReceived(reading: GpsReading) {
+        errorMessage = null
         
-        // Track max stats
-        maxSatelliteCount = max(maxSatelliteCount, sats)
-        
-        // Max Speed Logic (Wait 5s)
-        val timeElapsed = android.os.SystemClock.elapsedRealtime() - appStartTime
-        if (timeElapsed > 5000 && sats >= 3) {
-            if (speedKmh > maxSpeedKmh) {
-                maxSpeedKmh = speedKmh
-            }
+        if (gpsSignalFilter.isSignalAcceptable(reading)) {
+            val stats = sessionTracker.update(reading)
+            state = SpeedometerState(
+                currentSpeedKmh = stats.currentSpeedKmh,
+                maxSpeedKmh = stats.maxSpeedKmh,
+                satelliteCount = stats.currentSatellites,
+                maxSatelliteCount = stats.maxSatellites
+            )
+        } else {
+            val sanitizedReading = reading.copy(speedMetersPerSecond = 0f)
+            val stats = sessionTracker.update(sanitizedReading)
+            
+            state = SpeedometerState(
+                currentSpeedKmh = 0f,
+                maxSpeedKmh = stats.maxSpeedKmh,
+                satelliteCount = stats.currentSatellites,
+                maxSatelliteCount = stats.maxSatellites
+            )
         }
     }
-
-    fun resetSession() {
-        currentSpeedKmh = 0f
-        maxSpeedKmh = 0f
-        satelliteCount = 0
-        maxSatelliteCount = 0
+    
+    fun onSessionStart() {
+        sessionTracker.startSession()
+    }
+    
+    fun onSessionReset() {
+        sessionTracker.reset()
+        state = SpeedometerState(0f, 0f, 0, 0)
         errorMessage = null
-        lastFixTime = 0L
-        // We do NOT reset appStartTime here; we reset it when tracking starts
+    }
+    
+    fun onError(message: String) {
+        errorMessage = message
     }
 }

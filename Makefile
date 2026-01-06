@@ -5,10 +5,14 @@ RELEASE_APK = $(OUT_DIR)/release/app-release.apk
 DEBUG_APK = $(OUT_DIR)/debug/app-debug.apk
 
 # Phony targets to prevent conflicts with file names
-.PHONY: all release debug clean install log help
+.PHONY: all test release debug clean install log help
 
 # Default target (runs when you type 'make')
 all: release
+
+test:
+	$(GRADLE) test
+	@echo "\n Testing"
 
 # --- Build Commands ---
 
