@@ -1,15 +1,21 @@
 package com.example.gpsspeedometer
 
 import android.Manifest
+import android.app.PictureInPictureParams
 import android.content.pm.PackageManager
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -41,6 +47,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var locationRepository: LocationRepositoryImpl
     private var watchdogJob: Job? = null
     private var lastFixTime: Long = 0L
+
+    private var isInPipMode by mutableStateOf(false)
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -78,8 +86,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpeedometerScreen(
                 state = viewModel.state,
-                error = viewModel.errorMessage
+                error = viewModel.errorMessage,
+                isInPipMode = isInPipMode,
+                onEnterPip = { enterPipMode() }
             )
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        }
+        isInPipMode = isInPictureInPictureMode
+    }
+
+    private fun enterPipMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(16, 9))
+                .build()
+            enterPictureInPictureMode(params)
         }
     }
 
@@ -152,9 +178,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SpeedometerScreen(
     state: SpeedometerState,
-    error: String?
+    error: String?,
+    isInPipMode: Boolean,
+    onEnterPip: () -> Unit
 ) {
     val statusColor = if (state.satelliteCount >= 3) Color.Green else Color.Red
+
+    // Adjust font sizes for PiP mode
+    val mainSpeedSize = if (isInPipMode) 64.sp else 120.sp
+    val decimalSize = if (isInPipMode) 24.sp else 40.sp
+    val unitSize = if (isInPipMode) 14.sp else 24.sp
+    val letterSpacing = if (isInPipMode) (-2).sp else (-4).sp
 
     Box(
         modifier = Modifier
@@ -171,30 +205,32 @@ fun SpeedometerScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            // --- TOP LEFT: Satellite Status ---
-            Row(
-                modifier = Modifier.align(Alignment.TopStart),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(statusColor, shape = androidx.compose.foundation.shape.CircleShape)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "satellites: ",
-                    color = Color.Gray,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    fontSize = 16.sp
-                )
-                Text(
-                    text = "${state.satelliteCount}",
-                    color = Color.White,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+            if (!isInPipMode) {
+                // --- TOP LEFT: Satellite Status ---
+                Row(
+                    modifier = Modifier.align(Alignment.TopStart),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(statusColor, shape = androidx.compose.foundation.shape.CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "satellites: ",
+                        color = Color.Gray,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontSize = 16.sp
+                    )
+                    Text(
+                        text = "${state.satelliteCount}",
+                        color = Color.White,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
             }
 
             // --- CENTER: Speedometer ---
@@ -207,32 +243,30 @@ fun SpeedometerScreen(
                 val intPart = parts[0]
                 val decPart = if (parts.size > 1) parts[1] else "00"
 
-                // Removed 'verticalAlignment = Alignment.Bottom'
-                // Added 'Modifier.alignByBaseline()' to every child Text
                 Row {
                     // Integer Part
                     Text(
                         text = intPart,
                         style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = 120.sp, 
+                            fontSize = mainSpeedSize, 
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = (-4).sp,
+                            letterSpacing = letterSpacing,
                             color = Color.White
                         ),
-                        modifier = Modifier.alignByBaseline() // FIX: Aligns to text baseline
+                        modifier = Modifier.alignByBaseline()
                     )
                     
                     // Decimal Part
                     Text(
                         text = ".$decPart",
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 40.sp,
+                            fontSize = decimalSize,
                             fontWeight = FontWeight.Bold,
                             color = Color.LightGray
                         ),
                         modifier = Modifier
-                            .alignByBaseline() // FIX: Aligns to text baseline
-                            .padding(start = 2.dp) // Little breathing room
+                            .alignByBaseline()
+                            .padding(start = 2.dp)
                     )
 
                     Spacer(modifier = Modifier.width(4.dp))
@@ -241,26 +275,40 @@ fun SpeedometerScreen(
                     Text(
                         text = "km/h",
                         style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 24.sp,
+                            fontSize = unitSize,
                             color = Color.DarkGray
                         ),
-                        modifier = Modifier.alignByBaseline() // FIX: Aligns to text baseline
+                        modifier = Modifier.alignByBaseline()
                     )
                 }
             }
 
-            // --- BOTTOM LEFT: Stats Area ---
-            Column(
-                modifier = Modifier.align(Alignment.BottomStart)
-            ) {
-                Divider(
-                    modifier = Modifier.width(150.dp).padding(bottom = 12.dp),
-                    thickness = 1.dp,
-                    color = Color.DarkGray
-                )
+            if (!isInPipMode) {
+                // --- BOTTOM LEFT: Stats Area ---
+                Column(
+                    modifier = Modifier.align(Alignment.BottomStart)
+                ) {
+                    Divider(
+                        modifier = Modifier.width(150.dp).padding(bottom = 12.dp),
+                        thickness = 1.dp,
+                        color = Color.DarkGray
+                    )
 
-                StatRow(label = "top speed", value = "%.1f".format(state.maxSpeedKmh))
-                StatRow(label = "top satellites", value = "${state.maxSatelliteCount}")
+                    StatRow(label = "top speed", value = "%.1f".format(state.maxSpeedKmh))
+                    StatRow(label = "top satellites", value = "${state.maxSatelliteCount}")
+                }
+                
+                // --- BOTTOM RIGHT: PiP Button ---
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Button(
+                        onClick = onEnterPip,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                    ) {
+                        Text(text = "Float", color = Color.White)
+                    }
+                }
             }
         }
     }
