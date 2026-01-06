@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -182,6 +183,16 @@ fun SpeedometerScreen(
     isInPipMode: Boolean,
     onEnterPip: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+    val backgroundColor = if (isDark) Color.Black else Color.White
+    val primaryColor = if (isDark) Color.White else Color.Black
+    val secondaryColor = if (isDark) Color.LightGray else Color.DarkGray
+    val tertiaryColor = if (isDark) Color.DarkGray else Color.Gray
+    val labelColor = if (isDark) Color.Gray else Color.DarkGray
+    val dividerColor = if (isDark) Color.DarkGray else Color.LightGray
+    val pipContainerColor = if (isDark) Color.Gray else Color.LightGray
+    val pipContentColor = if (isDark) Color.White else Color.Black
+
     val statusColor = if (state.satelliteCount >= 3) Color.Green else Color.Red
 
     // Adjust font sizes for PiP mode
@@ -193,7 +204,7 @@ fun SpeedometerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(backgroundColor)
             .padding(16.dp)
     ) {
         if (error != null) {
@@ -219,13 +230,13 @@ fun SpeedometerScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "satellites: ",
-                        color = Color.Gray,
+                        color = labelColor,
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         fontSize = 16.sp
                     )
                     Text(
                         text = "${state.satelliteCount}",
-                        color = Color.White,
+                        color = primaryColor,
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
@@ -251,7 +262,7 @@ fun SpeedometerScreen(
                             fontSize = mainSpeedSize, 
                             fontWeight = FontWeight.Bold,
                             letterSpacing = letterSpacing,
-                            color = Color.White
+                            color = primaryColor
                         ),
                         modifier = Modifier.alignByBaseline()
                     )
@@ -262,7 +273,7 @@ fun SpeedometerScreen(
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = decimalSize,
                             fontWeight = FontWeight.Bold,
-                            color = Color.LightGray
+                            color = secondaryColor
                         ),
                         modifier = Modifier
                             .alignByBaseline()
@@ -276,7 +287,7 @@ fun SpeedometerScreen(
                         text = "km/h",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = unitSize,
-                            color = Color.DarkGray
+                            color = tertiaryColor
                         ),
                         modifier = Modifier.alignByBaseline()
                     )
@@ -291,11 +302,11 @@ fun SpeedometerScreen(
                     Divider(
                         modifier = Modifier.width(150.dp).padding(bottom = 12.dp),
                         thickness = 1.dp,
-                        color = Color.DarkGray
+                        color = dividerColor
                     )
 
-                    StatRow(label = "top speed", value = "%.1f".format(state.maxSpeedKmh))
-                    StatRow(label = "top satellites", value = "${state.maxSatelliteCount}")
+                    StatRow(label = "top speed", value = "%.1f".format(state.maxSpeedKmh), labelColor, primaryColor)
+                    StatRow(label = "top satellites", value = "${state.maxSatelliteCount}", labelColor, primaryColor)
                 }
                 
                 // --- BOTTOM RIGHT: PiP Button ---
@@ -304,9 +315,9 @@ fun SpeedometerScreen(
                         onClick = onEnterPip,
                         modifier = Modifier
                             .align(Alignment.BottomEnd),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                        colors = ButtonDefaults.buttonColors(containerColor = pipContainerColor)
                     ) {
-                        Text(text = "Float", color = Color.White)
+                        Text(text = "Float", color = pipContentColor)
                     }
                 }
             }
@@ -315,17 +326,17 @@ fun SpeedometerScreen(
 }
 
 @Composable
-fun StatRow(label: String, value: String) {
+fun StatRow(label: String, value: String, labelColor: Color, valueColor: Color) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
         Text(
             text = "$label: ",
-            color = Color.Gray,
+            color = labelColor,
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             fontSize = 14.sp
         )
         Text(
             text = value,
-            color = Color.White,
+            color = valueColor,
             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp
