@@ -2,6 +2,6 @@
 plugins {
     // The version numbers here are CRITICAL.
     // They determine which Android tools and Kotlin compiler to use.
-    id("com.android.application") version "8.2.0" apply false
+    id("com.android.application") version "8.13.2" apply false
     id("org.jetbrains.kotlin.android") version "1.9.0" apply false
 }
