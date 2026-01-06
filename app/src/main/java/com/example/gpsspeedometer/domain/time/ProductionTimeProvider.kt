@@ -1,4 +1,4 @@
-package com.example.gpsspeedometer.data
+package com.example.gpsspeedometer.domain.time
 
 import android.os.SystemClock
 import com.example.gpsspeedometer.domain.TimeProvider

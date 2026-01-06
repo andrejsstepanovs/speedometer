@@ -36,9 +36,7 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: SpeedometerViewModel by viewModels { 
-        SpeedometerViewModelFactory(this) 
-    }
+    private val viewModel: SpeedometerViewModel by viewModels { SpeedometerViewModelFactory.INSTANCE }
     
     private lateinit var locationRepository: LocationRepositoryImpl
     private var watchdogJob: Job? = null

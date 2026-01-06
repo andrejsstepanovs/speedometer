@@ -1,7 +1,7 @@
 package com.example.gpsspeedometer.domain.util
 
 import org.junit.Test
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 
 class SpeedConverterTest {
     

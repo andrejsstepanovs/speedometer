@@ -1,18 +1,15 @@
 package com.example.gpsspeedometer.data.repository
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.GnssStatus
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
-import android.os.Build
 import android.os.Bundle
 import androidx.core.content.ContextCompat
-import android.os.SystemClock
-import com.example.gpsspeedometer.data.ProductionTimeProvider
+import com.example.gpsspeedometer.domain.time.ProductionTimeProvider
 import com.example.gpsspeedometer.domain.TimeProvider
 import com.example.gpsspeedometer.domain.model.GpsReading
 
@@ -48,21 +45,17 @@ class LocationRepositoryImpl(
                 )
             }
             
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                locationManager.registerGnssStatusCallback(gnssCallback, null)
-            }
+            locationManager.registerGnssStatusCallback(gnssCallback, null)
         } catch (e: Exception) {
-            onGpsError("Error starting GPS: ${e.message}")
+            onGpsError?.invoke("Error starting GPS: ${e.message}")
         }
     }
     
     override suspend fun stopLocationUpdates() {
         locationManager.removeUpdates(locationListener)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            try {
-                locationManager.unregisterGnssStatusCallback(gnssCallback)
-            } catch (e: IllegalArgumentException) {
-            }
+        try {
+            locationManager.unregisterGnssStatusCallback(gnssCallback)
+        } catch (e: IllegalArgumentException) {
         }
         onReadingUpdate = null
         onGpsError = null
@@ -92,6 +85,7 @@ class LocationRepositoryImpl(
             }
         }
         
+        @Deprecated("Deprecated in Java")
         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
     }
     
