@@ -7,13 +7,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.gpsspeedometer"
-    compileSdk = 34
+    namespace = "com.legitdev.speedometer.app"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.gpsspeedometer"
+        applicationId = "com.legitdev.speedometer.app"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -75,7 +75,7 @@ android {
     composeOptions {
         // This version must match your Kotlin version. 
         // If you get a "Compose Compiler Compatibility" error, check the compatibility map.
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.14"
     }
     
     packaging {

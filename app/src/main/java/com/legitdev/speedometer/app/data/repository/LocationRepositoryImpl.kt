@@ -1,4 +1,4 @@
-package com.example.gpsspeedometer.data.repository
+package com.legitdev.speedometer.app.data.repository
 
 import android.Manifest
 import android.content.Context
@@ -9,9 +9,9 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
 import androidx.core.content.ContextCompat
-import com.example.gpsspeedometer.domain.time.ProductionTimeProvider
-import com.example.gpsspeedometer.domain.TimeProvider
-import com.example.gpsspeedometer.domain.model.GpsReading
+import com.legitdev.speedometer.app.domain.time.ProductionTimeProvider
+import com.legitdev.speedometer.app.domain.TimeProvider
+import com.legitdev.speedometer.app.domain.model.GpsReading
 
 class LocationRepositoryImpl(
     private val context: Context,

@@ -1,4 +1,4 @@
-package com.example.gpsspeedometer.domain.util
+package com.legitdev.speedometer.app.domain.util
 
 import org.junit.Test
 import org.junit.Assert.assertEquals

@@ -1,14 +1,14 @@
-package com.example.gpsspeedometer
+package com.legitdev.speedometer.app
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.example.gpsspeedometer.domain.GpsSignalFilter
-import com.example.gpsspeedometer.domain.SessionStatisticsTracker
-import com.example.gpsspeedometer.domain.model.GpsReading
-import com.example.gpsspeedometer.domain.model.SessionConfig
-import com.example.gpsspeedometer.domain.model.SpeedometerState
+import com.legitdev.speedometer.app.domain.GpsSignalFilter
+import com.legitdev.speedometer.app.domain.SessionStatisticsTracker
+import com.legitdev.speedometer.app.domain.model.GpsReading
+import com.legitdev.speedometer.app.domain.model.SessionConfig
+import com.legitdev.speedometer.app.domain.model.SpeedometerState
 
 class SpeedometerViewModel(
     private val sessionTracker: SessionStatisticsTracker,

@@ -1,4 +1,4 @@
-package com.example.gpsspeedometer.domain.model
+package com.legitdev.speedometer.app.domain.model
 
 data class SessionStatistics(
     val currentSpeedKmh: Float,

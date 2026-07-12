@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GpsSpeedometer"
+rootProject.name = "Just GPS Speedometer"
 include(":app")

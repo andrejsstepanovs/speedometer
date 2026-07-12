@@ -9,8 +9,8 @@ A minimalist, privacy-focused Android speedometer built with Kotlin and Jetpack 
 - **Language**: Kotlin
 - **UI Framework**: Jetpack Compose (Material3)
 - **Architecture**: MVVM with ViewModel + Compose
-- **Min SDK**: 24, **Target SDK**: 34
-- **Package**: `com.example.gpsspeedometer`
+- **Min SDK**: 24, **Target SDK**: 35
+- **Package**: `com.legitdev.speedometer.app`
 
 ## Build Commands
 
@@ -90,7 +90,7 @@ import kotlinx.coroutines.launch
 - **Functions**: camelCase (`updateLocation`, `startTracking`)
 - **Variables/Properties**: camelCase (`currentSpeedKmh`, `satelliteCount`)
 - **Constants**: UPPER_SNAKE_CASE (when added)
-- **Packages**: lowercase with dots (`com.example.gpsspeedometer`)
+- **Packages**: lowercase with dots (`com.legitdev.speedometer.app`)
 
 ### Type Usage & Null Safety
 - Use nullable types (`String?`, `Job?`) when appropriate
@@ -155,7 +155,7 @@ app/src/main/java/com/example/gpsspeedometer/
 - **Kotlin**: 1.9.0
 - **Compose Compiler**: 1.5.1
 - **Compose BOM**: 2023.08.00
-- **Target SDK**: 34, **Min SDK**: 24
+- **Target SDK**: 35, **Min SDK**: 24
 
 ## Testing Guidelines
 

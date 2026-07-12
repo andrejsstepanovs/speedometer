@@ -1,4 +1,4 @@
-package com.example.gpsspeedometer.domain
+package com.legitdev.speedometer.app.domain
 
 interface TimeProvider {
     fun currentTimeMillis(): Long

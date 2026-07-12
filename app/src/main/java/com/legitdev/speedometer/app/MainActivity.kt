@@ -1,4 +1,4 @@
-package com.example.gpsspeedometer
+package com.legitdev.speedometer.app
 
 import android.Manifest
 import android.app.PictureInPictureParams
@@ -31,10 +31,10 @@ import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.lifecycleScope
 
-import com.example.gpsspeedometer.data.repository.LocationRepositoryImpl
-import com.example.gpsspeedometer.di.SpeedometerViewModelFactory
-import com.example.gpsspeedometer.domain.model.GpsReading
-import com.example.gpsspeedometer.domain.model.SpeedometerState
+import com.legitdev.speedometer.app.data.repository.LocationRepositoryImpl
+import com.legitdev.speedometer.app.di.SpeedometerViewModelFactory
+import com.legitdev.speedometer.app.domain.model.GpsReading
+import com.legitdev.speedometer.app.domain.model.SpeedometerState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive

@@ -1,4 +1,4 @@
-package com.example.gpsspeedometer.domain.util
+package com.legitdev.speedometer.app.domain.util
 
 object SpeedConverter {
     fun metersPerSecondToKmh(mps: Float): Float = mps * 3.6f

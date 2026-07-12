@@ -1,6 +1,6 @@
-package com.example.gpsspeedometer.data.repository
+package com.legitdev.speedometer.app.data.repository
 
-import com.example.gpsspeedometer.domain.model.GpsReading
+import com.legitdev.speedometer.app.domain.model.GpsReading
 
 interface LocationRepository {
     suspend fun startLocationUpdates(

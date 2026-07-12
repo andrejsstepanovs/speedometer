@@ -28,6 +28,9 @@ debug:
 	@echo "\n✅ Debug APK created at:"
 	@echo "   $(DEBUG_APK)"
 
+bundle:
+	$(GRADLE) bundleRelease
+
 # --- Utility Commands ---
 
 # Clean build artifacts

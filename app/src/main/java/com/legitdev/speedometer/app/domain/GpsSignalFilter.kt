@@ -1,8 +1,8 @@
-package com.example.gpsspeedometer.domain
+package com.legitdev.speedometer.app.domain
 
-import com.example.gpsspeedometer.domain.model.GpsReading
-import com.example.gpsspeedometer.domain.model.SessionConfig
-import com.example.gpsspeedometer.domain.util.SpeedConverter
+import com.legitdev.speedometer.app.domain.model.GpsReading
+import com.legitdev.speedometer.app.domain.model.SessionConfig
+import com.legitdev.speedometer.app.domain.util.SpeedConverter
 
 class GpsSignalFilter(private val config: SessionConfig) {
     fun isSignalAcceptable(reading: GpsReading): Boolean {

@@ -1,13 +1,13 @@
-package com.example.gpsspeedometer.di
+package com.legitdev.speedometer.app.di
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.gpsspeedometer.SpeedometerViewModel
-import com.example.gpsspeedometer.domain.GpsSignalFilter
-import com.example.gpsspeedometer.domain.SessionStatisticsTracker
-import com.example.gpsspeedometer.domain.TimeProvider
-import com.example.gpsspeedometer.domain.model.SessionConfig
-import com.example.gpsspeedometer.domain.time.ProductionTimeProvider
+import com.legitdev.speedometer.app.SpeedometerViewModel
+import com.legitdev.speedometer.app.domain.GpsSignalFilter
+import com.legitdev.speedometer.app.domain.SessionStatisticsTracker
+import com.legitdev.speedometer.app.domain.TimeProvider
+import com.legitdev.speedometer.app.domain.model.SessionConfig
+import com.legitdev.speedometer.app.domain.time.ProductionTimeProvider
 import android.os.SystemClock
 
 class SpeedometerViewModelFactory : ViewModelProvider.Factory {
