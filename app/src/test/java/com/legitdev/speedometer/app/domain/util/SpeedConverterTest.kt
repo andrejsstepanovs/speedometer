@@ -26,4 +26,11 @@ class SpeedConverterTest {
         val backToMps = SpeedConverter.kmhToMetersPerSecond(kmh)
         assertEquals(originalSpeed, backToMps, 0.01f)
     }
+
+    @Test
+    fun `kmhToMph converts correctly`() {
+        assertEquals(62.137f, SpeedConverter.kmhToMph(100f), 0.01f)
+        assertEquals(0.0f, SpeedConverter.kmhToMph(0f), 0.01f)
+        assertEquals(31.068f, SpeedConverter.kmhToMph(50f), 0.01f)
+    }
 }

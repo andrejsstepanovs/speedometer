@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
@@ -35,6 +36,8 @@ import com.legitdev.speedometer.app.data.repository.LocationRepositoryImpl
 import com.legitdev.speedometer.app.di.SpeedometerViewModelFactory
 import com.legitdev.speedometer.app.domain.model.GpsReading
 import com.legitdev.speedometer.app.domain.model.SpeedometerState
+import com.legitdev.speedometer.app.domain.model.SpeedUnit
+import com.legitdev.speedometer.app.domain.util.SpeedConverter
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -43,7 +46,7 @@ import java.util.Locale
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: SpeedometerViewModel by viewModels { SpeedometerViewModelFactory.INSTANCE }
+    private val viewModel: SpeedometerViewModel by viewModels { SpeedometerViewModelFactory(applicationContext) }
     
     private lateinit var locationRepository: LocationRepositoryImpl
     private var watchdogJob: Job? = null
@@ -72,6 +75,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            isInPipMode = isInPictureInPictureMode
+        }
+
         locationRepository = LocationRepositoryImpl(this)
         
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
@@ -89,7 +99,8 @@ class MainActivity : ComponentActivity() {
                 state = viewModel.state,
                 error = viewModel.errorMessage,
                 isInPipMode = isInPipMode,
-                onEnterPip = { enterPipMode() }
+                onEnterPip = { enterPipMode() },
+                onUnitToggle = { viewModel.toggleUnit() }
             )
         }
     }
@@ -181,7 +192,8 @@ fun SpeedometerScreen(
     state: SpeedometerState,
     error: String?,
     isInPipMode: Boolean,
-    onEnterPip: () -> Unit
+    onEnterPip: () -> Unit,
+    onUnitToggle: () -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
     val backgroundColor = if (isDark) Color.Black else Color.White
@@ -205,6 +217,7 @@ fun SpeedometerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
+            .safeDrawingPadding()
             .padding(16.dp)
     ) {
         if (error != null) {
@@ -249,7 +262,8 @@ fun SpeedometerScreen(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val formattedSpeed = "%.2f".format(Locale.US, state.currentSpeedKmh)
+                val displaySpeed = if (state.displayUnit == SpeedUnit.KMH) state.currentSpeedKmh else SpeedConverter.kmhToMph(state.currentSpeedKmh)
+                val formattedSpeed = "%.2f".format(Locale.US, displaySpeed)
                 val parts = formattedSpeed.split(".")
                 val intPart = parts[0]
                 val decPart = if (parts.size > 1) parts[1] else "00"
@@ -284,12 +298,14 @@ fun SpeedometerScreen(
 
                     // Unit
                     Text(
-                        text = "km/h",
+                        text = state.displayUnit.displayString,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = unitSize,
                             color = tertiaryColor
                         ),
-                        modifier = Modifier.alignByBaseline()
+                        modifier = Modifier
+                            .alignByBaseline()
+                            .clickable { onUnitToggle() }
                     )
                 }
             }
@@ -305,7 +321,8 @@ fun SpeedometerScreen(
                         color = dividerColor
                     )
 
-                    StatRow(label = "top speed", value = "%.1f".format(state.maxSpeedKmh), labelColor, primaryColor)
+                    val displayMaxSpeed = if (state.displayUnit == SpeedUnit.KMH) state.maxSpeedKmh else SpeedConverter.kmhToMph(state.maxSpeedKmh)
+                    StatRow(label = "top speed", value = "%.1f".format(displayMaxSpeed), labelColor, primaryColor)
                     StatRow(label = "top satellites", value = "${state.maxSatelliteCount}", labelColor, primaryColor)
                 }
                 
