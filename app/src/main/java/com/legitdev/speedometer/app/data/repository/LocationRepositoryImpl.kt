@@ -55,7 +55,7 @@ class LocationRepositoryImpl(
         locationManager.removeUpdates(locationListener)
         try {
             locationManager.unregisterGnssStatusCallback(gnssCallback)
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
         }
         onReadingUpdate = null
         onGpsError = null

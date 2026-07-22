@@ -7,6 +7,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+@Suppress("DEPRECATION")
 android {
     namespace = "com.legitdev.speedometer.app"
     compileSdk = 37
@@ -14,6 +15,7 @@ android {
     defaultConfig {
         applicationId = "com.legitdev.speedometer.app"
         minSdk = 24
+        //noinspection UpdateToLatestSdk
         targetSdk = 37
         versionCode = 3
         versionName = "1.0"

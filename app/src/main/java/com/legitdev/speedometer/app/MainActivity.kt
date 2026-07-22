@@ -79,9 +79,7 @@ class MainActivity : ComponentActivity() {
         
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            isInPipMode = isInPictureInPictureMode
-        }
+        isInPipMode = isInPictureInPictureMode
 
         locationRepository = LocationRepositoryImpl(this)
         
