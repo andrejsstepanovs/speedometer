@@ -7,7 +7,6 @@ import androidx.lifecycle.ViewModel
 import com.legitdev.speedometer.app.domain.GpsSignalFilter
 import com.legitdev.speedometer.app.domain.SessionStatisticsTracker
 import com.legitdev.speedometer.app.domain.model.GpsReading
-import com.legitdev.speedometer.app.domain.model.SessionConfig
 import com.legitdev.speedometer.app.domain.model.SpeedUnit
 import com.legitdev.speedometer.app.domain.model.SpeedometerState
 import com.legitdev.speedometer.app.domain.repository.SettingsRepository

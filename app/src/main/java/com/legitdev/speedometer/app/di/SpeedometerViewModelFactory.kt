@@ -7,10 +7,8 @@ import com.legitdev.speedometer.app.SpeedometerViewModel
 import com.legitdev.speedometer.app.data.repository.SettingsRepositoryImpl
 import com.legitdev.speedometer.app.domain.GpsSignalFilter
 import com.legitdev.speedometer.app.domain.SessionStatisticsTracker
-import com.legitdev.speedometer.app.domain.TimeProvider
 import com.legitdev.speedometer.app.domain.model.SessionConfig
 import com.legitdev.speedometer.app.domain.time.ProductionTimeProvider
-import android.os.SystemClock
 
 class SpeedometerViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
     

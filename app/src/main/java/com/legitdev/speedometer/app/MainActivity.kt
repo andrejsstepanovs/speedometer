@@ -18,7 +18,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -43,6 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
 
@@ -142,7 +143,7 @@ class MainActivity : ComponentActivity() {
         watchdogJob?.cancel()
         watchdogJob = lifecycleScope.launch {
             while (isActive) {
-                delay(1000)
+                delay(1000.milliseconds)
                 val timeSinceLastFix = SystemClock.elapsedRealtime() - lastFixTime
                 if (lastFixTime > 0 && timeSinceLastFix > 2000 && viewModel.state.currentSpeedKmh > 0) {
                     val fakeReading = GpsReading(0f, null, viewModel.state.satelliteCount, SystemClock.elapsedRealtime())
@@ -315,7 +316,7 @@ fun SpeedometerScreen(
                 Column(
                     modifier = Modifier.align(Alignment.BottomStart)
                 ) {
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier.width(150.dp).padding(bottom = 12.dp),
                         thickness = 1.dp,
                         color = dividerColor

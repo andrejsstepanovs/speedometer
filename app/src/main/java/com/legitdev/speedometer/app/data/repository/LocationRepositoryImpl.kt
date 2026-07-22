@@ -47,7 +47,7 @@ class LocationRepositoryImpl(
             
             locationManager.registerGnssStatusCallback(gnssCallback, null)
         } catch (e: Exception) {
-            onGpsError?.invoke("Error starting GPS: ${e.message}")
+            onGpsError("Error starting GPS: ${e.message}")
         }
     }
     
