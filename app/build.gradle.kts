@@ -4,6 +4,7 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -71,13 +72,7 @@ android {
     buildFeatures {
         compose = true
     }
-    
-    composeOptions {
-        // This version must match your Kotlin version. 
-        // If you get a "Compose Compiler Compatibility" error, check the compatibility map.
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
-    
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
