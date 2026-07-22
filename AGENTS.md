@@ -9,7 +9,7 @@ A minimalist, privacy-focused Android speedometer built with Kotlin and Jetpack 
 - **Language**: Kotlin
 - **UI Framework**: Jetpack Compose (Material3)
 - **Architecture**: MVVM with ViewModel + Compose
-- **Min SDK**: 24, **Target SDK**: 35
+- **Min SDK**: 24, **Target SDK**: 37
 - **Package**: `com.legitdev.speedometer.app`
 
 ## Build Commands
@@ -155,7 +155,7 @@ app/src/main/java/com/example/gpsspeedometer/
 - **Kotlin**: 1.9.0
 - **Compose Compiler**: 1.5.1
 - **Compose BOM**: 2023.08.00
-- **Target SDK**: 35, **Min SDK**: 24
+- **Target SDK**: 37, **Min SDK**: 24
 
 ## Testing Guidelines
 
