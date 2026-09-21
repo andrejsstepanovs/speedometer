@@ -10,6 +10,7 @@ import android.location.LocationManager
 import android.os.Bundle
 import androidx.core.content.ContextCompat
 import com.legitdev.speedometer.app.domain.time.ProductionTimeProvider
+import com.legitdev.speedometer.app.domain.GpsKickstartPolicy
 import com.legitdev.speedometer.app.domain.TimeProvider
 import com.legitdev.speedometer.app.domain.model.GpsReading
 import com.legitdev.speedometer.app.domain.model.SessionConfig
@@ -25,7 +26,11 @@ class LocationRepositoryImpl(
     private var onGpsError: ((String) -> Unit)? = null
     private var currentSatelliteCount = 0
     private var lastLocation: Location? = null
-    private var lastKickstartAt = 0L
+    private val kickstartPolicy = GpsKickstartPolicy(
+        minSatellites = SessionConfig.MIN_SATELLITES_FOR_LOCK,
+        intervalMillis = KICKSTART_INTERVAL_MILLIS,
+        timeProvider = timeProvider
+    )
     
     override suspend fun startLocationUpdates(
         onReadingUpdate: (GpsReading) -> Unit,
@@ -61,14 +66,10 @@ class LocationRepositoryImpl(
         }
         onReadingUpdate = null
         onGpsError = null
-        lastKickstartAt = 0L
+        kickstartPolicy.reset()
     }
-    
-    private fun kickstartGpsAcquisition() {
-        val now = timeProvider.currentTimeMillis()
-        if (now - lastKickstartAt < KICKSTART_INTERVAL_MILLIS) return
-        lastKickstartAt = now
 
+    private fun kickstartGpsAcquisition() {
         for (command in KICKSTART_COMMANDS) {
             try {
                 locationManager.sendExtraCommand(LocationManager.GPS_PROVIDER, command, null)
@@ -116,7 +117,7 @@ class LocationRepositoryImpl(
             }
             currentSatelliteCount = count
 
-            if (count < SessionConfig.MIN_SATELLITES_FOR_LOCK) {
+            if (kickstartPolicy.shouldKickstart(count)) {
                 kickstartGpsAcquisition()
             }
             
