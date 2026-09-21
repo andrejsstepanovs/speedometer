@@ -44,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -262,9 +264,9 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private const val PIP_REFERENCE_WIDTH = 228f
-private const val MIN_PIP_FONT_SCALE = 0.7f
-private const val MAX_PIP_FONT_SCALE = 2.2f
+private const val MIN_PIP_FONT_SCALE = 0.5f
+private const val MAX_PIP_FONT_SCALE = 4f
+private const val PIP_TEXT_HEIGHT_FRACTION = 1.25f
 private const val PIP_BASE_SPEED_SP = 64f
 private const val PIP_BASE_DECIMAL_SP = 24f
 private const val PIP_BASE_UNIT_SP = 14f
@@ -303,6 +305,12 @@ fun SpeedometerScreen(
     val speedDecimalColor = if (pipTransparentActive) hudGreen else secondaryColor
     val speedUnitColor = if (pipTransparentActive) hudGreen else tertiaryColor
 
+    val displaySpeed = if (state.displayUnit == SpeedUnit.KMH) state.currentSpeedKmh else SpeedConverter.kmhToMph(state.currentSpeedKmh)
+    val formattedSpeed = "%.2f".format(Locale.US, displaySpeed)
+    val parts = formattedSpeed.split(".")
+    val intPart = parts[0]
+    val decPart = if (parts.size > 1) parts[1] else "00"
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -317,8 +325,33 @@ fun SpeedometerScreen(
             .safeDrawingPadding()
             .padding(16.dp)
     ) {
+        val textMeasurer = rememberTextMeasurer()
         val pipFontScale = if (isInPipMode) {
-            (maxWidth.value / PIP_REFERENCE_WIDTH).coerceIn(MIN_PIP_FONT_SCALE, MAX_PIP_FONT_SCALE)
+            val mainStyle = MaterialTheme.typography.displayLarge.copy(
+                fontSize = PIP_BASE_SPEED_SP.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = PIP_BASE_LETTER_SPACING_SP.sp
+            )
+            val decimalStyle = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = PIP_BASE_DECIMAL_SP.sp,
+                fontWeight = FontWeight.Bold
+            )
+            val unitStyle = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = PIP_BASE_UNIT_SP.sp
+            )
+            val intLayout = textMeasurer.measure(intPart, mainStyle)
+            val decimalLayout = textMeasurer.measure(".$decPart", decimalStyle)
+            val unitLayout = textMeasurer.measure(state.displayUnit.displayString, unitStyle)
+            val density = LocalDensity.current
+            with(density) {
+                val textWidthPx = intLayout.size.width +
+                    decimalLayout.size.width + 2.dp.toPx() +
+                    unitLayout.size.width + 4.dp.toPx()
+                val lineHeightPx = maxOf(intLayout.size.height, decimalLayout.size.height).toFloat()
+                val scaleByWidth = maxWidth.toPx() / textWidthPx
+                val scaleByHeight = (maxHeight.toPx() * PIP_TEXT_HEIGHT_FRACTION) / lineHeightPx
+                minOf(scaleByWidth, scaleByHeight).coerceIn(MIN_PIP_FONT_SCALE, MAX_PIP_FONT_SCALE)
+            }
         } else {
             1f
         }
@@ -389,12 +422,6 @@ fun SpeedometerScreen(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val displaySpeed = if (state.displayUnit == SpeedUnit.KMH) state.currentSpeedKmh else SpeedConverter.kmhToMph(state.currentSpeedKmh)
-                val formattedSpeed = "%.2f".format(Locale.US, displaySpeed)
-                val parts = formattedSpeed.split(".")
-                val intPart = parts[0]
-                val decPart = if (parts.size > 1) parts[1] else "00"
-
                 Row {
                     // Integer Part
                     Text(
