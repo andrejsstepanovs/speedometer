@@ -300,7 +300,7 @@ fun SpeedometerScreen(
 
     val pipTransparentActive = isInPipMode && isPipTransparent
     val hudGreen = Color(0xFF00FF41)
-    val hudScrim = Color(0xB3000000)
+    val hudScrim = Color(0x99000000)
     val pipBackground = if (pipTransparentActive) hudScrim else backgroundColor
     val speedColor = if (pipTransparentActive) hudGreen else primaryColor
     val speedDecimalColor = if (pipTransparentActive) hudGreen else secondaryColor
