@@ -25,11 +25,20 @@ class SpeedometerViewModel(
     
     var isPowerSaveMode by mutableStateOf(false)
         private set
-    
+
+    var isPipTransparent by mutableStateOf(settingsRepository.isPipTransparent())
+        private set
+
     fun onPowerSaveModeChanged(active: Boolean) {
         isPowerSaveMode = active
     }
-    
+
+    fun onPipBackgroundToggled() {
+        val newValue = !isPipTransparent
+        isPipTransparent = newValue
+        settingsRepository.setPipTransparent(newValue)
+    }
+
     fun onGpsReadingReceived(reading: GpsReading) {
         errorMessage = null
         

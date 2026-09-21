@@ -20,4 +20,16 @@ class SettingsRepositoryImpl(context: Context) : SettingsRepository {
     override fun setSpeedUnit(unit: SpeedUnit) {
         prefs.edit { putString("speed_unit", unit.name) }
     }
+
+    override fun isPipTransparent(): Boolean {
+        return prefs.getBoolean(PIP_TRANSPARENT_KEY, false)
+    }
+
+    override fun setPipTransparent(transparent: Boolean) {
+        prefs.edit { putBoolean(PIP_TRANSPARENT_KEY, transparent) }
+    }
+
+    private companion object {
+        const val PIP_TRANSPARENT_KEY = "pip_transparent"
+    }
 }

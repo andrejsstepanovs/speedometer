@@ -5,4 +5,6 @@ import com.legitdev.speedometer.app.domain.model.SpeedUnit
 interface SettingsRepository {
     fun getSpeedUnit(): SpeedUnit
     fun setSpeedUnit(unit: SpeedUnit)
+    fun isPipTransparent(): Boolean
+    fun setPipTransparent(transparent: Boolean)
 }

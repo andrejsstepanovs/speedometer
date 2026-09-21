@@ -2,12 +2,17 @@ package com.legitdev.speedometer.app
 
 import android.Manifest
 import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.graphics.PixelFormat
+import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
@@ -24,6 +29,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -37,11 +43,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 
 import com.legitdev.speedometer.app.data.repository.LocationRepositoryImpl
@@ -76,6 +84,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val pipToggleReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            viewModel.onPipBackgroundToggled()
+        }
+    }
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -99,10 +113,18 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        window.setFormat(PixelFormat.TRANSLUCENT)
+        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
         
         isInPipMode = isInPictureInPictureMode
 
         locationRepository = LocationRepositoryImpl(this)
+
+        registerReceiver(
+            pipToggleReceiver,
+            IntentFilter(ACTION_TOGGLE_PIP_TRANSPARENCY),
+            ContextCompat.RECEIVER_EXPORTED
+        )
         
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
             != PackageManager.PERMISSION_GRANTED) {
@@ -120,6 +142,8 @@ class MainActivity : ComponentActivity() {
                 error = viewModel.errorMessage,
                 isInPipMode = isInPipMode,
                 isPowerSaveMode = viewModel.isPowerSaveMode,
+                isPipTransparent = viewModel.isPipTransparent,
+                onPipBackgroundToggle = { viewModel.onPipBackgroundToggled() },
                 onEnterPip = { enterPipMode() },
                 onUnitToggle = { viewModel.toggleUnit() }
             )
@@ -135,8 +159,22 @@ class MainActivity : ComponentActivity() {
 
     private fun enterPipMode() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val toggleIntent = Intent(ACTION_TOGGLE_PIP_TRANSPARENCY).setPackage(packageName)
+            val togglePending = PendingIntent.getBroadcast(
+                this,
+                0,
+                toggleIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            val toggleAction = RemoteAction(
+                Icon.createWithResource(this, R.drawable.ic_pip_opacity),
+                "Transparency",
+                "Toggle background transparency",
+                togglePending
+            )
             val params = PictureInPictureParams.Builder()
                 .setAspectRatio(Rational(16, 9))
+                .setActions(listOf(toggleAction))
                 .build()
             enterPictureInPictureMode(params)
         }
@@ -163,6 +201,15 @@ class MainActivity : ComponentActivity() {
         if (!isChangingConfigurations) {
             viewModel.onSessionReset()
         }
+    }
+
+    companion object {
+        const val ACTION_TOGGLE_PIP_TRANSPARENCY = "com.legitdev.speedometer.app.TOGGLE_PIP_TRANSPARENCY"
+    }
+
+    override fun onDestroy() {
+        unregisterReceiver(pipToggleReceiver)
+        super.onDestroy()
     }
 
     private fun startWatchdog() {
@@ -220,6 +267,8 @@ fun SpeedometerScreen(
     error: String?,
     isInPipMode: Boolean,
     isPowerSaveMode: Boolean,
+    isPipTransparent: Boolean,
+    onPipBackgroundToggle: () -> Unit,
     onEnterPip: () -> Unit,
     onUnitToggle: () -> Unit
 ) {
@@ -237,6 +286,14 @@ fun SpeedometerScreen(
     val statusColor = if (isSearchingGps) Color.Red else Color.Green
     val powerSaveColor = Color(0xFFCC8800)
 
+    val pipTransparentActive = isInPipMode && isPipTransparent
+    val hudGreen = Color(0xFF00FF41)
+    val hudScrim = Color(0xB3000000)
+    val pipBackground = if (pipTransparentActive) hudScrim else backgroundColor
+    val speedColor = if (pipTransparentActive) hudGreen else primaryColor
+    val speedDecimalColor = if (pipTransparentActive) hudGreen else secondaryColor
+    val speedUnitColor = if (pipTransparentActive) hudGreen else tertiaryColor
+
     // Adjust font sizes for PiP mode
     val mainSpeedSize = if (isInPipMode) 64.sp else 120.sp
     val decimalSize = if (isInPipMode) 24.sp else 40.sp
@@ -246,7 +303,14 @@ fun SpeedometerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor)
+            .background(pipBackground)
+            .pointerInput(isInPipMode) {
+                detectTapGestures {
+                    if (isInPipMode) {
+                        onPipBackgroundToggle()
+                    }
+                }
+            }
             .safeDrawingPadding()
             .padding(16.dp)
     ) {
@@ -323,10 +387,10 @@ fun SpeedometerScreen(
                     Text(
                         text = intPart,
                         style = MaterialTheme.typography.displayLarge.copy(
-                            fontSize = mainSpeedSize, 
+                            fontSize = mainSpeedSize,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = letterSpacing,
-                            color = primaryColor
+                            color = speedColor
                         ),
                         modifier = Modifier.alignByBaseline()
                     )
@@ -337,7 +401,7 @@ fun SpeedometerScreen(
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = decimalSize,
                             fontWeight = FontWeight.Bold,
-                            color = secondaryColor
+                            color = speedDecimalColor
                         ),
                         modifier = Modifier
                             .alignByBaseline()
@@ -351,7 +415,7 @@ fun SpeedometerScreen(
                         text = state.displayUnit.displayString,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontSize = unitSize,
-                            color = tertiaryColor
+                            color = speedUnitColor
                         ),
                         modifier = Modifier
                             .alignByBaseline()
