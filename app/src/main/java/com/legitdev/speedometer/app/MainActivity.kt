@@ -267,6 +267,7 @@ class MainActivity : ComponentActivity() {
 private const val MIN_PIP_FONT_SCALE = 0.5f
 private const val MAX_PIP_FONT_SCALE = 4f
 private const val PIP_TEXT_HEIGHT_FRACTION = 1.25f
+private const val PIP_WIDTH_SAFETY = 0.96f
 private const val PIP_BASE_SPEED_SP = 64f
 private const val PIP_BASE_DECIMAL_SP = 24f
 private const val PIP_BASE_UNIT_SP = 14f
@@ -348,7 +349,7 @@ fun SpeedometerScreen(
                     decimalLayout.size.width + 2.dp.toPx() +
                     unitLayout.size.width + 4.dp.toPx()
                 val lineHeightPx = maxOf(intLayout.size.height, decimalLayout.size.height).toFloat()
-                val scaleByWidth = maxWidth.toPx() / textWidthPx
+                val scaleByWidth = PIP_WIDTH_SAFETY * maxWidth.toPx() / textWidthPx
                 val scaleByHeight = (maxHeight.toPx() * PIP_TEXT_HEIGHT_FRACTION) / lineHeightPx
                 minOf(scaleByWidth, scaleByHeight).coerceIn(MIN_PIP_FONT_SCALE, MAX_PIP_FONT_SCALE)
             }
