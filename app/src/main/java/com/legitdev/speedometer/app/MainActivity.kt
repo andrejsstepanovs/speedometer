@@ -2,20 +2,31 @@ package com.legitdev.speedometer.app
 
 import android.Manifest
 import android.app.PictureInPictureParams
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -25,6 +36,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -35,6 +47,7 @@ import androidx.lifecycle.lifecycleScope
 import com.legitdev.speedometer.app.data.repository.LocationRepositoryImpl
 import com.legitdev.speedometer.app.di.SpeedometerViewModelFactory
 import com.legitdev.speedometer.app.domain.model.GpsReading
+import com.legitdev.speedometer.app.domain.model.SessionConfig
 import com.legitdev.speedometer.app.domain.model.SpeedometerState
 import com.legitdev.speedometer.app.domain.model.SpeedUnit
 import com.legitdev.speedometer.app.domain.util.SpeedConverter
@@ -54,6 +67,14 @@ class MainActivity : ComponentActivity() {
     private var lastFixTime: Long = 0L
 
     private var isInPipMode by mutableStateOf(false)
+
+    private val powerManager by lazy { getSystemService(Context.POWER_SERVICE) as PowerManager }
+
+    private val powerSaveReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            viewModel.onPowerSaveModeChanged(powerManager.isPowerSaveMode)
+        }
+    }
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -98,6 +119,7 @@ class MainActivity : ComponentActivity() {
                 state = viewModel.state,
                 error = viewModel.errorMessage,
                 isInPipMode = isInPipMode,
+                isPowerSaveMode = viewModel.isPowerSaveMode,
                 onEnterPip = { enterPipMode() },
                 onUnitToggle = { viewModel.toggleUnit() }
             )
@@ -122,6 +144,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        registerReceiver(
+            powerSaveReceiver,
+            IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+        )
+        viewModel.onPowerSaveModeChanged(powerManager.isPowerSaveMode)
         checkPermissionsAndStart()
         startWatchdog()
         viewModel.onSessionStart()
@@ -129,6 +156,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        unregisterReceiver(powerSaveReceiver)
         stopLocationTracking()
         stopWatchdog()
 
@@ -191,6 +219,7 @@ fun SpeedometerScreen(
     state: SpeedometerState,
     error: String?,
     isInPipMode: Boolean,
+    isPowerSaveMode: Boolean,
     onEnterPip: () -> Unit,
     onUnitToggle: () -> Unit
 ) {
@@ -204,7 +233,9 @@ fun SpeedometerScreen(
     val pipContainerColor = if (isDark) Color.Gray else Color.LightGray
     val pipContentColor = if (isDark) Color.White else Color.Black
 
-    val statusColor = if (state.satelliteCount >= 3) Color.Green else Color.Red
+    val isSearchingGps = state.satelliteCount < SessionConfig.MIN_SATELLITES_FOR_LOCK
+    val statusColor = if (isSearchingGps) Color.Red else Color.Green
+    val powerSaveColor = Color(0xFFCC8800)
 
     // Adjust font sizes for PiP mode
     val mainSpeedSize = if (isInPipMode) 64.sp else 120.sp
@@ -234,10 +265,9 @@ fun SpeedometerScreen(
                     modifier = Modifier.align(Alignment.TopStart),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .background(statusColor, shape = androidx.compose.foundation.shape.CircleShape)
+                    GpsStatusDot(
+                        color = statusColor,
+                        isSearching = isSearchingGps
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -253,6 +283,27 @@ fun SpeedometerScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
+                }
+
+                // --- TOP RIGHT: Power Save Warning ---
+                if (isPowerSaveMode) {
+                    Row(
+                        modifier = Modifier.align(Alignment.TopEnd),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(powerSaveColor, shape = CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "power save",
+                            color = labelColor,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontSize = 16.sp
+                        )
+                    }
                 }
             }
 
@@ -339,6 +390,30 @@ fun SpeedometerScreen(
             }
         }
     }
+}
+
+@Composable
+fun GpsStatusDot(color: Color, isSearching: Boolean) {
+    val pulse = if (isSearching) {
+        rememberInfiniteTransition(label = "gps_search").animateFloat(
+            initialValue = 0.25f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1200),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "gps_search_alpha"
+        )
+    } else {
+        null
+    }
+
+    Box(
+        modifier = Modifier
+            .size(12.dp)
+            .graphicsLayer { alpha = pulse?.value ?: 1f }
+            .background(color, shape = CircleShape)
+    )
 }
 
 @Composable

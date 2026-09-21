@@ -23,6 +23,13 @@ class SpeedometerViewModel(
     var errorMessage by mutableStateOf<String?>(null)
         private set
     
+    var isPowerSaveMode by mutableStateOf(false)
+        private set
+    
+    fun onPowerSaveModeChanged(active: Boolean) {
+        isPowerSaveMode = active
+    }
+    
     fun onGpsReadingReceived(reading: GpsReading) {
         errorMessage = null
         

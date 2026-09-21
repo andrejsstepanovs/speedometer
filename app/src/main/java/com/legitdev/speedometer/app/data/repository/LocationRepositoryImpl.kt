@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import com.legitdev.speedometer.app.domain.time.ProductionTimeProvider
 import com.legitdev.speedometer.app.domain.TimeProvider
 import com.legitdev.speedometer.app.domain.model.GpsReading
+import com.legitdev.speedometer.app.domain.model.SessionConfig
 
 class LocationRepositoryImpl(
     private val context: Context,
@@ -24,6 +25,7 @@ class LocationRepositoryImpl(
     private var onGpsError: ((String) -> Unit)? = null
     private var currentSatelliteCount = 0
     private var lastLocation: Location? = null
+    private var lastKickstartAt = 0L
     
     override suspend fun startLocationUpdates(
         onReadingUpdate: (GpsReading) -> Unit,
@@ -59,6 +61,20 @@ class LocationRepositoryImpl(
         }
         onReadingUpdate = null
         onGpsError = null
+        lastKickstartAt = 0L
+    }
+    
+    private fun kickstartGpsAcquisition() {
+        val now = timeProvider.currentTimeMillis()
+        if (now - lastKickstartAt < KICKSTART_INTERVAL_MILLIS) return
+        lastKickstartAt = now
+
+        for (command in KICKSTART_COMMANDS) {
+            try {
+                locationManager.sendExtraCommand(LocationManager.GPS_PROVIDER, command, null)
+            } catch (_: Exception) {
+            }
+        }
     }
     
     private fun createGpsReading(location: Location): GpsReading {
@@ -99,6 +115,10 @@ class LocationRepositoryImpl(
                 }
             }
             currentSatelliteCount = count
+
+            if (count < SessionConfig.MIN_SATELLITES_FOR_LOCK) {
+                kickstartGpsAcquisition()
+            }
             
             val location = lastLocation
             if (location != null) {
@@ -114,5 +134,10 @@ class LocationRepositoryImpl(
                 onReadingUpdate?.invoke(reading)
             }
         }
+    }
+    
+    private companion object {
+        const val KICKSTART_INTERVAL_MILLIS = 5000L
+        val KICKSTART_COMMANDS = listOf("force_time_injection", "force_xtra_injection")
     }
 }
