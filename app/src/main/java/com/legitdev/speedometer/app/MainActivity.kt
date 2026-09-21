@@ -120,7 +120,8 @@ class MainActivity : ComponentActivity() {
 
         locationRepository = LocationRepositoryImpl(this)
 
-        registerReceiver(
+        ContextCompat.registerReceiver(
+            this,
             pipToggleReceiver,
             IntentFilter(ACTION_TOGGLE_PIP_TRANSPARENCY),
             ContextCompat.RECEIVER_EXPORTED
@@ -261,6 +262,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private const val PIP_REFERENCE_WIDTH = 228f
+private const val MIN_PIP_FONT_SCALE = 0.7f
+private const val MAX_PIP_FONT_SCALE = 2.2f
+private const val PIP_BASE_SPEED_SP = 64f
+private const val PIP_BASE_DECIMAL_SP = 24f
+private const val PIP_BASE_UNIT_SP = 14f
+private const val PIP_BASE_LETTER_SPACING_SP = -2f
+
 @Composable
 fun SpeedometerScreen(
     state: SpeedometerState,
@@ -294,13 +303,7 @@ fun SpeedometerScreen(
     val speedDecimalColor = if (pipTransparentActive) hudGreen else secondaryColor
     val speedUnitColor = if (pipTransparentActive) hudGreen else tertiaryColor
 
-    // Adjust font sizes for PiP mode
-    val mainSpeedSize = if (isInPipMode) 64.sp else 120.sp
-    val decimalSize = if (isInPipMode) 24.sp else 40.sp
-    val unitSize = if (isInPipMode) 14.sp else 24.sp
-    val letterSpacing = if (isInPipMode) (-2).sp else (-4).sp
-
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(pipBackground)
@@ -314,6 +317,16 @@ fun SpeedometerScreen(
             .safeDrawingPadding()
             .padding(16.dp)
     ) {
+        val pipFontScale = if (isInPipMode) {
+            (maxWidth.value / PIP_REFERENCE_WIDTH).coerceIn(MIN_PIP_FONT_SCALE, MAX_PIP_FONT_SCALE)
+        } else {
+            1f
+        }
+        val mainSpeedSize = if (isInPipMode) (PIP_BASE_SPEED_SP * pipFontScale).sp else 120.sp
+        val decimalSize = if (isInPipMode) (PIP_BASE_DECIMAL_SP * pipFontScale).sp else 40.sp
+        val unitSize = if (isInPipMode) (PIP_BASE_UNIT_SP * pipFontScale).sp else 24.sp
+        val letterSpacing = if (isInPipMode) (PIP_BASE_LETTER_SPACING_SP * pipFontScale).sp else (-4).sp
+
         if (error != null) {
             Text(
                 text = error,
