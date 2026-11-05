@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.legitdev.speedometer.app.domain.FixValidity
 import com.legitdev.speedometer.app.domain.GpsSignalFilter
 import com.legitdev.speedometer.app.domain.SessionStatisticsTracker
 import com.legitdev.speedometer.app.domain.TimeProvider
@@ -58,7 +59,7 @@ class SpeedometerViewModel(
             state = state.copy(currentSpeedKmh = 0f)
         }
 
-        if (gpsSignalFilter.isSignalAcceptable(reading)) {
+        if (gpsSignalFilter.isSignalAcceptable(reading) == FixValidity.VALID) {
             val stats = sessionTracker.update(reading)
             state = state.copy(
                 currentSpeedKmh = stats.currentSpeedKmh,

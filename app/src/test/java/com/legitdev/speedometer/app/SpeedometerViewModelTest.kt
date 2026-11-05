@@ -59,7 +59,7 @@ class SpeedometerViewModelTest {
 
     private val timeProvider = FakeTimeProvider()
     private val settingsRepository = FakeSettingsRepository()
-    private val gpsSignalFilter = GpsSignalFilter(acceptingConfig)
+    private val gpsSignalFilter = GpsSignalFilter(acceptingConfig, timeProvider)
     private val sessionTracker = SessionStatisticsTracker(acceptingConfig, timeProvider)
 
     private val testDispatcher = StandardTestDispatcher()

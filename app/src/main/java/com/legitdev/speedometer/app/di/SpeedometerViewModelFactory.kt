@@ -24,7 +24,7 @@ class SpeedometerViewModelFactory(private val context: Context) : ViewModelProvi
         val config = SessionConfig()
         val timeProvider = ProductionTimeProvider()
         val sessionTracker = SessionStatisticsTracker(config, timeProvider)
-        val gpsSignalFilter = GpsSignalFilter(config)
+        val gpsSignalFilter = GpsSignalFilter(config, timeProvider)
         val settingsRepository = SettingsRepositoryImpl(context)
         
         return SpeedometerViewModel(sessionTracker, gpsSignalFilter, settingsRepository, timeProvider)
