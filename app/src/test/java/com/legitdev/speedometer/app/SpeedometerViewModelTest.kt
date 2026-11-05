@@ -4,9 +4,10 @@ import com.legitdev.speedometer.app.domain.GpsSignalFilter
 import com.legitdev.speedometer.app.domain.SessionStatisticsTracker
 import com.legitdev.speedometer.app.domain.TimeProvider
 import com.legitdev.speedometer.app.domain.model.GpsReading
-import com.legitdev.speedometer.app.domain.model.SessionStatistics
+import com.legitdev.speedometer.app.domain.model.SessionConfig
 import com.legitdev.speedometer.app.domain.model.SpeedUnit
 import com.legitdev.speedometer.app.domain.repository.SettingsRepository
+import com.legitdev.speedometer.app.domain.util.SpeedConverter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -18,26 +19,54 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
-import org.mockito.kotlin.any
-import org.mockito.kotlin.mock
-import org.mockito.kotlin.verify
-import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SpeedometerViewModelTest {
 
-    private val sessionTracker = mock<SessionStatisticsTracker>()
-    private val gpsSignalFilter = mock<GpsSignalFilter>()
-    private val settingsRepository = mock<SettingsRepository>()
-    private val timeProvider = mock<TimeProvider>()
+    private class FakeTimeProvider(var now: Long = 1000L) : TimeProvider {
+        override fun currentTimeMillis(): Long = now
+    }
+
+    private class FakeSettingsRepository(
+        var storedSpeedUnit: SpeedUnit = SpeedUnit.KMH,
+        var storedPipTransparent: Boolean = false
+    ) : SettingsRepository {
+        val savedSpeedUnits = mutableListOf<SpeedUnit>()
+        val savedPipValues = mutableListOf<Boolean>()
+
+        override fun getSpeedUnit(): SpeedUnit = storedSpeedUnit
+
+        override fun setSpeedUnit(unit: SpeedUnit) {
+            storedSpeedUnit = unit
+            savedSpeedUnits += unit
+        }
+
+        override fun isPipTransparent(): Boolean = storedPipTransparent
+
+        override fun setPipTransparent(transparent: Boolean) {
+            storedPipTransparent = transparent
+            savedPipValues += transparent
+        }
+    }
+
+    private val acceptingConfig = SessionConfig(
+        warmupPeriodMillis = 0L,
+        minSatellitesForTracking = 0,
+        maxAccuracyMeters = Float.MAX_VALUE,
+        minSpeedKmh = 0f,
+        gpsSignalTimeoutMillis = 2000L
+    )
+
+    private val timeProvider = FakeTimeProvider()
+    private val settingsRepository = FakeSettingsRepository()
+    private val gpsSignalFilter = GpsSignalFilter(acceptingConfig)
+    private val sessionTracker = SessionStatisticsTracker(acceptingConfig, timeProvider)
 
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        whenever(settingsRepository.getSpeedUnit()).thenReturn(SpeedUnit.KMH)
-        whenever(timeProvider.currentTimeMillis()).thenReturn(1000L)
     }
 
     @After
@@ -48,16 +77,55 @@ class SpeedometerViewModelTest {
     private fun createViewModel() =
         SpeedometerViewModel(sessionTracker, gpsSignalFilter, settingsRepository, timeProvider)
 
-    private fun stubAcceptedReading() {
-        whenever(gpsSignalFilter.isSignalAcceptable(any())).thenReturn(true)
-        whenever(sessionTracker.update(any())).thenReturn(
-            SessionStatistics(
-                currentSpeedKmh = 10f,
-                maxSpeedKmh = 12f,
-                currentSatellites = 3,
-                maxSatellites = 5
-            )
-        )
+    private fun readingAtKmh(speedKmh: Float) = GpsReading(
+        speedMetersPerSecond = SpeedConverter.kmhToMetersPerSecond(speedKmh),
+        accuracyMeters = 5f,
+        satelliteCount = 3,
+        timestamp = timeProvider.currentTimeMillis()
+    )
+
+    @Test
+    fun `gps reading updates current speed`() {
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+
+        assertEquals(10f, viewModel.state.currentSpeedKmh, 0.01f)
+    }
+
+    @Test
+    fun `speed resets to zero after stale timeout`() {
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+        assertEquals(10f, viewModel.state.currentSpeedKmh, 0.01f)
+
+        timeProvider.now += 2001L
+        testDispatcher.scheduler.advanceTimeBy(2001L)
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(0f, viewModel.state.currentSpeedKmh, 0.001f)
+    }
+
+    @Test
+    fun `satellite count updates without changing speed`() {
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+        viewModel.onSatelliteCountReceived(5)
+
+        assertEquals(5, viewModel.state.satelliteCount)
+        assertEquals(10f, viewModel.state.currentSpeedKmh, 0.01f)
+    }
+
+    @Test
+    fun `initial state is zero`() {
+        val viewModel = createViewModel()
+
+        assertEquals(0f, viewModel.state.currentSpeedKmh, 0.001f)
+        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
+        assertEquals(0, viewModel.state.satelliteCount)
+        assertEquals(0, viewModel.state.maxSatelliteCount)
     }
 
     @Test
@@ -80,61 +148,12 @@ class SpeedometerViewModelTest {
 
     @Test
     fun `power save state survives gps reading updates`() {
-        stubAcceptedReading()
         val viewModel = createViewModel()
 
         viewModel.onPowerSaveModeChanged(true)
-        viewModel.onGpsReadingReceived(GpsReading(3f, 5f, 3, 1000L))
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
 
         assertTrue(viewModel.isPowerSaveMode)
-    }
-
-    @Test
-    fun `valid reading shows non-zero speed`() {
-        stubAcceptedReading()
-        val viewModel = createViewModel()
-
-        viewModel.onGpsReadingReceived(GpsReading(3f, 5f, 3, 1000L))
-
-        assertTrue(viewModel.state.currentSpeedKmh > 0f)
-        assertEquals(10f, viewModel.state.currentSpeedKmh, 0.001f)
-    }
-
-    @Test
-    fun `initial state is zero`() {
-        val viewModel = createViewModel()
-
-        assertEquals(0f, viewModel.state.currentSpeedKmh, 0.001f)
-        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
-        assertEquals(0, viewModel.state.satelliteCount)
-        assertEquals(0, viewModel.state.maxSatelliteCount)
-    }
-
-    @Test
-    fun `speed resets to zero after stale timeout`() {
-        stubAcceptedReading()
-        val viewModel = createViewModel()
-
-        viewModel.onGpsReadingReceived(GpsReading(3f, 5f, 3, 1000L))
-        assertEquals(10f, viewModel.state.currentSpeedKmh, 0.001f)
-
-        testDispatcher.scheduler.advanceTimeBy(2001L)
-        testDispatcher.scheduler.runCurrent()
-
-        assertEquals(0f, viewModel.state.currentSpeedKmh, 0.001f)
-    }
-
-    @Test
-    fun `satellite count updates without changing speed`() {
-        stubAcceptedReading()
-        val viewModel = createViewModel()
-
-        viewModel.onGpsReadingReceived(GpsReading(3f, 5f, 3, 1000L))
-        viewModel.onSatelliteCountReceived(7)
-
-        assertEquals(7, viewModel.state.satelliteCount)
-        assertEquals(7, viewModel.state.maxSatelliteCount)
-        assertEquals(10f, viewModel.state.currentSpeedKmh, 0.001f)
     }
 
     @Test
@@ -149,7 +168,7 @@ class SpeedometerViewModelTest {
 
     @Test
     fun `pip transparency is loaded from settings on init`() {
-        whenever(settingsRepository.isPipTransparent()).thenReturn(true)
+        settingsRepository.storedPipTransparent = true
 
         val viewModel = createViewModel()
 
@@ -169,10 +188,10 @@ class SpeedometerViewModelTest {
 
         viewModel.onPipBackgroundToggled()
         assertTrue(viewModel.isPipTransparent)
-        verify(settingsRepository).setPipTransparent(true)
 
         viewModel.onPipBackgroundToggled()
         assertFalse(viewModel.isPipTransparent)
-        verify(settingsRepository).setPipTransparent(false)
+
+        assertEquals(listOf(true, false), settingsRepository.savedPipValues)
     }
 }
