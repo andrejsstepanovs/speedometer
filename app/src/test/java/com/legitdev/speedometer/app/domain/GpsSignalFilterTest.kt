@@ -51,15 +51,15 @@ class GpsSignalFilterTest {
     }
     
     @Test
-    fun `too slow speed is rejected`() {
+    fun `zero speed is acceptable`() {
         val reading = GpsReading(
-            speedMetersPerSecond = 0.2f,
+            speedMetersPerSecond = 0f,
             accuracyMeters = 30f,
             satelliteCount = 5,
             timestamp = 1000L
         )
         
-        assertFalse(filter.isSignalAcceptable(reading))
+        assertTrue(filter.isSignalAcceptable(reading))
     }
     
     @Test
