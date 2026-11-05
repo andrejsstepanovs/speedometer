@@ -94,6 +94,16 @@ class SpeedometerViewModelTest {
     }
 
     @Test
+    fun `first valid gps reading updates current and max speed`() {
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+
+        assertEquals(10f, viewModel.state.currentSpeedKmh, 0.01f)
+        assertEquals(10f, viewModel.state.maxSpeedKmh, 0.01f)
+    }
+
+    @Test
     fun `speed resets to zero after stale timeout`() {
         val viewModel = createViewModel()
 
