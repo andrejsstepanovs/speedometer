@@ -242,6 +242,12 @@ private const val PIP_BASE_SPEED_SP = 64f
 private const val PIP_BASE_DECIMAL_SP = 24f
 private const val PIP_BASE_UNIT_SP = 14f
 private const val PIP_BASE_LETTER_SPACING_SP = -2f
+private const val MIN_HUD_FONT_SCALE = 0.5f
+private const val MAX_HUD_FONT_SCALE = 1f
+private const val HUD_BASE_SPEED_SP = 120f
+private const val HUD_BASE_DECIMAL_SP = 40f
+private const val HUD_BASE_UNIT_SP = 24f
+private const val HUD_BASE_LETTER_SPACING_SP = -4f
 
 @Composable
 fun SpeedometerScreen(
@@ -297,7 +303,7 @@ fun SpeedometerScreen(
             .padding(16.dp)
     ) {
         val textMeasurer = rememberTextMeasurer()
-        val pipFontScale = if (isInPipMode) {
+        val hudFontScale = if (isInPipMode) {
             val mainStyle = MaterialTheme.typography.displayLarge.copy(
                 fontSize = PIP_BASE_SPEED_SP.sp,
                 fontWeight = FontWeight.Bold,
@@ -324,12 +330,36 @@ fun SpeedometerScreen(
                 minOf(scaleByWidth, scaleByHeight).coerceIn(MIN_PIP_FONT_SCALE, MAX_PIP_FONT_SCALE)
             }
         } else {
-            1f
+            val mainStyle = MaterialTheme.typography.displayLarge.copy(
+                fontSize = HUD_BASE_SPEED_SP.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = HUD_BASE_LETTER_SPACING_SP.sp
+            )
+            val decimalStyle = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = HUD_BASE_DECIMAL_SP.sp,
+                fontWeight = FontWeight.Bold
+            )
+            val unitStyle = MaterialTheme.typography.headlineMedium.copy(
+                fontSize = HUD_BASE_UNIT_SP.sp
+            )
+            val intLayout = textMeasurer.measure(intPart, mainStyle)
+            val decimalLayout = textMeasurer.measure(".$decPart", decimalStyle)
+            val unitLayout = textMeasurer.measure(state.displayUnit.displayString, unitStyle)
+            val density = LocalDensity.current
+            with(density) {
+                val textWidthPx = intLayout.size.width +
+                    decimalLayout.size.width + 2.dp.toPx() +
+                    unitLayout.size.width + 4.dp.toPx()
+                val lineHeightPx = maxOf(intLayout.size.height, decimalLayout.size.height).toFloat()
+                val scaleByWidth = PIP_WIDTH_SAFETY * maxWidth.toPx() / textWidthPx
+                val scaleByHeight = (maxHeight.toPx() * PIP_TEXT_HEIGHT_FRACTION) / lineHeightPx
+                minOf(scaleByWidth, scaleByHeight).coerceIn(MIN_HUD_FONT_SCALE, MAX_HUD_FONT_SCALE)
+            }
         }
-        val mainSpeedSize = if (isInPipMode) (PIP_BASE_SPEED_SP * pipFontScale).sp else 120.sp
-        val decimalSize = if (isInPipMode) (PIP_BASE_DECIMAL_SP * pipFontScale).sp else 40.sp
-        val unitSize = if (isInPipMode) (PIP_BASE_UNIT_SP * pipFontScale).sp else 24.sp
-        val letterSpacing = if (isInPipMode) (PIP_BASE_LETTER_SPACING_SP * pipFontScale).sp else (-4).sp
+        val mainSpeedSize = if (isInPipMode) (PIP_BASE_SPEED_SP * hudFontScale).sp else (HUD_BASE_SPEED_SP * hudFontScale).sp
+        val decimalSize = if (isInPipMode) (PIP_BASE_DECIMAL_SP * hudFontScale).sp else (HUD_BASE_DECIMAL_SP * hudFontScale).sp
+        val unitSize = if (isInPipMode) (PIP_BASE_UNIT_SP * hudFontScale).sp else (HUD_BASE_UNIT_SP * hudFontScale).sp
+        val letterSpacing = if (isInPipMode) (PIP_BASE_LETTER_SPACING_SP * hudFontScale).sp else (HUD_BASE_LETTER_SPACING_SP * hudFontScale).sp
 
         if (error != null) {
             Text(
@@ -403,6 +433,8 @@ fun SpeedometerScreen(
                             letterSpacing = letterSpacing,
                             color = speedColor
                         ),
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier.alignByBaseline()
                     )
                     
@@ -414,6 +446,8 @@ fun SpeedometerScreen(
                             fontWeight = FontWeight.Bold,
                             color = speedDecimalColor
                         ),
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier
                             .alignByBaseline()
                             .padding(start = 2.dp)
@@ -428,6 +462,8 @@ fun SpeedometerScreen(
                             fontSize = unitSize,
                             color = speedUnitColor
                         ),
+                        maxLines = 1,
+                        softWrap = false,
                         modifier = Modifier
                             .alignByBaseline()
                             .clickable { onUnitToggle() }
