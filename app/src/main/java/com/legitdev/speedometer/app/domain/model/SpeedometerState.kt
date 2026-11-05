@@ -5,5 +5,6 @@ data class SpeedometerState(
     val maxSpeedKmh: Float = 0f,
     val satelliteCount: Int = 0,
     val maxSatelliteCount: Int = 0,
-    val displayUnit: SpeedUnit = SpeedUnit.KMH
+    val displayUnit: SpeedUnit = SpeedUnit.KMH,
+    val topSpeedStatus: TopSpeedStatus = TopSpeedStatus.INVALID
 )
