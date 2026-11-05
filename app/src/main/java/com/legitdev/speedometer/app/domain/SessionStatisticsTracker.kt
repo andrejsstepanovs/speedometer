@@ -20,13 +20,14 @@ class SessionStatisticsTracker(
         maxSatellites = 0
     }
     
-    fun update(reading: GpsReading): SessionStatistics {
+    fun update(reading: GpsReading, validity: FixValidity): SessionStatistics {
         val currentSpeedKmh = SpeedConverter.metersPerSecondToKmh(reading.speedMetersPerSecond)
         
         maxSatellites = max(maxSatellites, reading.satelliteCount)
         
         val elapsed = timeProvider.currentTimeMillis() - sessionStartTime
-        if (elapsed >= config.warmupPeriodMillis && 
+        if (validity == FixValidity.VALID &&
+            elapsed >= config.warmupPeriodMillis && 
             reading.satelliteCount >= config.minSatellitesForTracking) {
             maxSpeedKmh = max(maxSpeedKmh, currentSpeedKmh)
         }

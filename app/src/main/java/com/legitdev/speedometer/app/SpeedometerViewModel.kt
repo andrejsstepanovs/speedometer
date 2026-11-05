@@ -59,15 +59,16 @@ class SpeedometerViewModel(
             state = state.copy(currentSpeedKmh = 0f)
         }
 
-        if (gpsSignalFilter.isSignalAcceptable(reading) == FixValidity.VALID) {
-            val stats = sessionTracker.update(reading)
+        val validity = gpsSignalFilter.isSignalAcceptable(reading)
+        if (validity == FixValidity.VALID) {
+            val stats = sessionTracker.update(reading, validity)
             state = state.copy(
                 currentSpeedKmh = stats.currentSpeedKmh,
                 maxSpeedKmh = stats.maxSpeedKmh
             )
         } else {
             val sanitizedReading = reading.copy(speedMetersPerSecond = 0f)
-            val stats = sessionTracker.update(sanitizedReading)
+            val stats = sessionTracker.update(sanitizedReading, validity)
 
             state = state.copy(
                 currentSpeedKmh = 0f,

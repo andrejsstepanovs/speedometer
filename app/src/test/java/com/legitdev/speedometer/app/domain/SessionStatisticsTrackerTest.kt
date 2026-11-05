@@ -24,7 +24,7 @@ class SessionStatisticsTrackerTest {
         tracker.startSession()
         
         val reading = GpsReading(10f, 30f, 5, 1000L)
-        val stats = tracker.update(reading)
+        val stats = tracker.update(reading, FixValidity.VALID)
         
         assertEquals(36.0f, stats.currentSpeedKmh, 0.01f)
         assertEquals(5, stats.currentSatellites)
@@ -39,7 +39,7 @@ class SessionStatisticsTrackerTest {
         tracker.startSession()
         
         val reading = GpsReading(20f, 30f, 5, 1000L)
-        val stats = tracker.update(reading)
+        val stats = tracker.update(reading, FixValidity.VALID)
         
         assertEquals(72.0f, stats.currentSpeedKmh, 0.01f)
         assertEquals(0f, stats.maxSpeedKmh, 0.01f)
@@ -52,7 +52,7 @@ class SessionStatisticsTrackerTest {
         tracker.startSession()
         
         val reading = GpsReading(20f, 30f, 5, 6000L)
-        val stats = tracker.update(reading)
+        val stats = tracker.update(reading, FixValidity.VALID)
         
         assertEquals(72.0f, stats.currentSpeedKmh, 0.01f)
         assertEquals(72.0f, stats.maxSpeedKmh, 0.01f)
@@ -65,7 +65,7 @@ class SessionStatisticsTrackerTest {
         tracker.startSession()
         
         val reading = GpsReading(20f, 30f, 2, 6000L)
-        val stats = tracker.update(reading)
+        val stats = tracker.update(reading, FixValidity.VALID)
         
         assertEquals(72.0f, stats.currentSpeedKmh, 0.01f)
         assertEquals(0f, stats.maxSpeedKmh, 0.01f)
@@ -78,15 +78,15 @@ class SessionStatisticsTrackerTest {
         tracker.startSession()
         
         val reading1 = GpsReading(10f, 30f, 3, 1000L)
-        tracker.update(reading1)
+        tracker.update(reading1, FixValidity.VALID)
         
         val reading2 = GpsReading(10f, 30f, 7, 2000L)
-        val stats2 = tracker.update(reading2)
+        val stats2 = tracker.update(reading2, FixValidity.VALID)
         
         assertEquals(7, stats2.maxSatellites)
         
         val reading3 = GpsReading(10f, 30f, 4, 3000L)
-        val stats3 = tracker.update(reading3)
+        val stats3 = tracker.update(reading3, FixValidity.VALID)
         
         assertEquals(7, stats3.maxSatellites)
     }
@@ -98,12 +98,12 @@ class SessionStatisticsTrackerTest {
         tracker.startSession()
         
         val reading = GpsReading(20f, 30f, 5, 6000L)
-        tracker.update(reading)
+        tracker.update(reading, FixValidity.VALID)
         
         tracker.reset()
         
         val resetReading = GpsReading(5f, 30f, 2, 7000L)
-        val stats = tracker.update(resetReading)
+        val stats = tracker.update(resetReading, FixValidity.VALID)
         
         assertEquals(0f, stats.maxSpeedKmh, 0.01f)
         assertEquals(2, stats.maxSatellites)
@@ -116,8 +116,57 @@ class SessionStatisticsTrackerTest {
         tracker.startSession()
         
         val reading = GpsReading(15f, 30f, 3, 1000L)
-        val stats = tracker.update(reading)
+        val stats = tracker.update(reading, FixValidity.VALID)
         
         assertEquals(54.0f, stats.currentSpeedKmh, 0.01f)
+    }
+    
+    @Test
+    fun `valid fix with lower speed does not lower top speed`() {
+        whenever(timeProvider.currentTimeMillis()).thenReturn(0L, 6000L, 7000L)
+        
+        tracker.startSession()
+        
+        tracker.update(GpsReading(20f, 30f, 5, 6000L), FixValidity.VALID)
+        val stats = tracker.update(GpsReading(10f, 30f, 5, 7000L), FixValidity.VALID)
+        
+        assertEquals(72.0f, stats.maxSpeedKmh, 0.01f)
+    }
+    
+    @Test
+    fun `invalid fix does not change top speed`() {
+        whenever(timeProvider.currentTimeMillis()).thenReturn(0L, 6000L, 7000L)
+        
+        tracker.startSession()
+        
+        tracker.update(GpsReading(20f, 30f, 5, 6000L), FixValidity.VALID)
+        val stats = tracker.update(GpsReading(30f, 60f, 5, 7000L), FixValidity.INVALID)
+        
+        assertEquals(72.0f, stats.maxSpeedKmh, 0.01f)
+    }
+    
+    @Test
+    fun `stale fix does not change top speed`() {
+        whenever(timeProvider.currentTimeMillis()).thenReturn(0L, 6000L, 7000L)
+        
+        tracker.startSession()
+        
+        tracker.update(GpsReading(20f, 30f, 5, 6000L), FixValidity.VALID)
+        val stats = tracker.update(GpsReading(30f, 30f, 5, 1000L), FixValidity.STALE)
+        
+        assertEquals(72.0f, stats.maxSpeedKmh, 0.01f)
+    }
+    
+    @Test
+    fun `valid fix after invalid period updates top speed`() {
+        whenever(timeProvider.currentTimeMillis()).thenReturn(0L, 6000L, 7000L, 8000L)
+        
+        tracker.startSession()
+        
+        tracker.update(GpsReading(20f, 30f, 5, 6000L), FixValidity.VALID)
+        tracker.update(GpsReading(40f, 60f, 5, 7000L), FixValidity.INVALID)
+        val stats = tracker.update(GpsReading(30f, 30f, 5, 8000L), FixValidity.VALID)
+        
+        assertEquals(108.0f, stats.maxSpeedKmh, 0.01f)
     }
 }
