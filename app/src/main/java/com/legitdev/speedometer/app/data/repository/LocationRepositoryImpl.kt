@@ -22,8 +22,9 @@ class LocationRepositoryImpl(
     
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     
-    private var onReadingUpdate: ((GpsReading) -> Unit)? = null
-    private var onGpsError: ((String) -> Unit)? = null
+    private var onLocationFix: ((GpsReading) -> Unit)? = null
+    private var onSatelliteCount: ((Int) -> Unit)? = null
+    private var onGpsError: ((String?) -> Unit)? = null
     private var currentSatelliteCount = 0
     private var lastLocation: Location? = null
     private val kickstartPolicy = GpsKickstartPolicy(
@@ -33,10 +34,12 @@ class LocationRepositoryImpl(
     )
     
     override suspend fun startLocationUpdates(
-        onReadingUpdate: (GpsReading) -> Unit,
-        onGpsError: ((String?) -> Unit)
+        onLocationFix: (GpsReading) -> Unit,
+        onSatelliteCount: (Int) -> Unit,
+        onGpsError: (String?) -> Unit
     ) {
-        this.onReadingUpdate = onReadingUpdate
+        this.onLocationFix = onLocationFix
+        this.onSatelliteCount = onSatelliteCount
         this.onGpsError = onGpsError
         
         try {
@@ -64,7 +67,8 @@ class LocationRepositoryImpl(
             locationManager.unregisterGnssStatusCallback(gnssCallback)
         } catch (_: IllegalArgumentException) {
         }
-        onReadingUpdate = null
+        onLocationFix = null
+        onSatelliteCount = null
         onGpsError = null
         kickstartPolicy.reset()
     }
@@ -115,7 +119,7 @@ class LocationRepositoryImpl(
             val previousLocation = lastLocation
             lastLocation = location
             val reading = createGpsReading(location, previousLocation)
-            onReadingUpdate?.invoke(reading)
+            onLocationFix?.invoke(reading)
         }
         
         override fun onProviderEnabled(provider: String) {}
@@ -140,6 +144,7 @@ class LocationRepositoryImpl(
                 }
             }
             currentSatelliteCount = count
+            onSatelliteCount?.invoke(count)
 
             if (kickstartPolicy.shouldKickstart(count)) {
                 kickstartGpsAcquisition()
@@ -148,7 +153,7 @@ class LocationRepositoryImpl(
             val location = lastLocation
             if (location != null) {
                 val reading = createGpsReading(location, null)
-                onReadingUpdate?.invoke(reading)
+                onLocationFix?.invoke(reading)
             } else {
                 val reading = GpsReading(
                     speedMetersPerSecond = 0f,
@@ -156,7 +161,7 @@ class LocationRepositoryImpl(
                     satelliteCount = currentSatelliteCount,
                     timestamp = timeProvider.currentTimeMillis()
                 )
-                onReadingUpdate?.invoke(reading)
+                onLocationFix?.invoke(reading)
             }
         }
     }

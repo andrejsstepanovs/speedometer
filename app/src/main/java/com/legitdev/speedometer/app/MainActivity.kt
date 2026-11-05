@@ -245,10 +245,11 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun startLocationTracking() {
         locationRepository.startLocationUpdates(
-            onReadingUpdate = { reading ->
+            onLocationFix = { reading ->
                 lastFixTime = reading.timestamp
                 viewModel.onGpsReadingReceived(reading)
             },
+            onSatelliteCount = { },
             onGpsError = { error ->
                 if (error != null) {
                     viewModel.onError(error)

@@ -4,7 +4,8 @@ import com.legitdev.speedometer.app.domain.model.GpsReading
 
 interface LocationRepository {
     suspend fun startLocationUpdates(
-        onReadingUpdate: (GpsReading) -> Unit,
+        onLocationFix: (GpsReading) -> Unit,
+        onSatelliteCount: (Int) -> Unit,
         onGpsError: (String?) -> Unit
     )
     suspend fun stopLocationUpdates()
