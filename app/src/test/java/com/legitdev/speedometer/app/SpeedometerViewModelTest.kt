@@ -96,6 +96,22 @@ class SpeedometerViewModelTest {
     }
 
     @Test
+    fun `high altitude high speed fix reports 1026 kmh`() {
+        val viewModel = createViewModel()
+
+        val reading = GpsReading(
+            speedMetersPerSecond = 285.0f,
+            accuracyMeters = 5f,
+            satelliteCount = 3,
+            timestamp = timeProvider.currentTimeMillis()
+        )
+
+        viewModel.onGpsReadingReceived(reading)
+
+        assertEquals(1026.0f, viewModel.state.currentSpeedKmh, 0.01f)
+    }
+
+    @Test
     fun `first valid gps reading updates current and max speed`() {
         val viewModel = createViewModel()
 
