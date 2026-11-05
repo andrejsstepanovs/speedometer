@@ -33,4 +33,11 @@ class SpeedConverterTest {
         assertEquals(0.0f, SpeedConverter.kmhToMph(0f), 0.01f)
         assertEquals(31.068f, SpeedConverter.kmhToMph(50f), 0.01f)
     }
+
+    @Test
+    fun `high speeds convert correctly`() {
+        assertEquals(416.6667f, SpeedConverter.kmhToMetersPerSecond(1500f), 0.01f)
+        assertEquals(1500f, SpeedConverter.metersPerSecondToKmh(416.6667f), 0.01f)
+        assertEquals(932.0568f, SpeedConverter.kmhToMph(1500f), 0.01f)
+    }
 }
