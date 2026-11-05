@@ -85,4 +85,28 @@ class GpsSignalFilterTest {
         
         assertTrue(filter.isSignalAcceptable(reading))
     }
+    
+    @Test
+    fun `zero speed with many satellites is acceptable`() {
+        val reading = GpsReading(
+            speedMetersPerSecond = 0f,
+            accuracyMeters = 30f,
+            satelliteCount = 21,
+            timestamp = 1000L
+        )
+        
+        assertTrue(filter.isSignalAcceptable(reading))
+    }
+    
+    @Test
+    fun `movement with many satellites is acceptable`() {
+        val reading = GpsReading(
+            speedMetersPerSecond = 10f,
+            accuracyMeters = 30f,
+            satelliteCount = 21,
+            timestamp = 1000L
+        )
+        
+        assertTrue(filter.isSignalAcceptable(reading))
+    }
 }
