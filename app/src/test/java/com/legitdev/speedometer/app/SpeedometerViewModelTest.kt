@@ -6,6 +6,7 @@ import com.legitdev.speedometer.app.domain.model.GpsReading
 import com.legitdev.speedometer.app.domain.model.SessionStatistics
 import com.legitdev.speedometer.app.domain.model.SpeedUnit
 import com.legitdev.speedometer.app.domain.repository.SettingsRepository
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -64,6 +65,25 @@ class SpeedometerViewModelTest {
         viewModel.onGpsReadingReceived(GpsReading(3f, 5f, 3, 1000L))
 
         assertTrue(viewModel.isPowerSaveMode)
+    }
+
+    @Test
+    fun `valid reading shows non-zero speed`() {
+        whenever(gpsSignalFilter.isSignalAcceptable(any())).thenReturn(true)
+        whenever(sessionTracker.update(any())).thenReturn(
+            SessionStatistics(
+                currentSpeedKmh = 10f,
+                maxSpeedKmh = 12f,
+                currentSatellites = 3,
+                maxSatellites = 5
+            )
+        )
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(GpsReading(3f, 5f, 3, 1000L))
+
+        assertTrue(viewModel.state.currentSpeedKmh > 0f)
+        assertEquals(10f, viewModel.state.currentSpeedKmh, 0.001f)
     }
 
     @Test
