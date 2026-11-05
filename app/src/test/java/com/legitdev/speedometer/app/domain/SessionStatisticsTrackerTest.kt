@@ -59,6 +59,18 @@ class SessionStatisticsTrackerTest {
     }
     
     @Test
+    fun `valid fix with higher speed raises top speed`() {
+        whenever(timeProvider.currentTimeMillis()).thenReturn(0L, 6000L, 7000L)
+        
+        tracker.startSession()
+        
+        tracker.update(GpsReading(20f, 30f, 5, 6000L), FixValidity.VALID)
+        val stats = tracker.update(GpsReading(30f, 30f, 5, 7000L), FixValidity.VALID)
+        
+        assertEquals(108.0f, stats.maxSpeedKmh, 0.01f)
+    }
+    
+    @Test
     fun `maxSpeed requires minimum satellites`() {
         whenever(timeProvider.currentTimeMillis()).thenReturn(0L, 6000L)
         
