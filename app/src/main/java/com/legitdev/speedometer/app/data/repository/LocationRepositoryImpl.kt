@@ -78,19 +78,43 @@ class LocationRepositoryImpl(
         }
     }
     
-    private fun createGpsReading(location: Location): GpsReading {
+    /**
+     * Creates a [GpsReading] from the given [location].
+     *
+     * The speed source is `Location.getSpeed()` when available. Otherwise, the speed is computed
+     * from the positions of [location] and [previousLocation].
+     */
+    private fun createGpsReading(location: Location, previousLocation: Location?): GpsReading {
+        val speedMetersPerSecond = if (location.hasSpeed()) {
+            location.speed
+        } else {
+            computeSpeedFromPositions(location, previousLocation)
+        }
         return GpsReading(
-            speedMetersPerSecond = location.speed,
+            speedMetersPerSecond = speedMetersPerSecond,
             accuracyMeters = if (location.hasAccuracy()) location.accuracy else null,
             satelliteCount = currentSatelliteCount,
             timestamp = timeProvider.currentTimeMillis()
         )
     }
+
+    private fun computeSpeedFromPositions(location: Location, previousLocation: Location?): Float {
+        if (previousLocation == null) {
+            return 0f
+        }
+        val elapsedMillis = location.time - previousLocation.time
+        if (elapsedMillis == 0L) {
+            return 0f
+        }
+        val distanceMeters = previousLocation.distanceTo(location)
+        return distanceMeters / (elapsedMillis / 1000f)
+    }
     
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
+            val previousLocation = lastLocation
             lastLocation = location
-            val reading = createGpsReading(location)
+            val reading = createGpsReading(location, previousLocation)
             onReadingUpdate?.invoke(reading)
         }
         
@@ -123,7 +147,7 @@ class LocationRepositoryImpl(
             
             val location = lastLocation
             if (location != null) {
-                val reading = createGpsReading(location)
+                val reading = createGpsReading(location, null)
                 onReadingUpdate?.invoke(reading)
             } else {
                 val reading = GpsReading(
