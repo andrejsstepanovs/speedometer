@@ -12,6 +12,7 @@ import com.legitdev.speedometer.app.domain.TimeProvider
 import com.legitdev.speedometer.app.domain.model.GpsReading
 import com.legitdev.speedometer.app.domain.model.SpeedUnit
 import com.legitdev.speedometer.app.domain.model.SpeedometerState
+import com.legitdev.speedometer.app.domain.model.TopSpeedStatus
 import com.legitdev.speedometer.app.domain.repository.SettingsRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -56,7 +57,11 @@ class SpeedometerViewModel(
         staleTimerJob?.cancel()
         staleTimerJob = viewModelScope.launch {
             delay(STALE_TIMEOUT_MILLIS)
-            state = state.copy(currentSpeedKmh = 0f)
+            state = state.copy(
+                currentSpeedKmh = 0f,
+                maxSpeedKmh = 0f,
+                topSpeedStatus = TopSpeedStatus.STALE
+            )
         }
 
         val validity = gpsSignalFilter.isSignalAcceptable(reading)
@@ -64,15 +69,22 @@ class SpeedometerViewModel(
             val stats = sessionTracker.update(reading, validity)
             state = state.copy(
                 currentSpeedKmh = stats.currentSpeedKmh,
-                maxSpeedKmh = stats.maxSpeedKmh
+                maxSpeedKmh = stats.maxSpeedKmh,
+                topSpeedStatus = TopSpeedStatus.VALID
             )
         } else {
             val sanitizedReading = reading.copy(speedMetersPerSecond = 0f)
-            val stats = sessionTracker.update(sanitizedReading, validity)
+            sessionTracker.update(sanitizedReading, validity)
 
+            val status = if (validity == FixValidity.STALE) {
+                TopSpeedStatus.STALE
+            } else {
+                TopSpeedStatus.INVALID
+            }
             state = state.copy(
                 currentSpeedKmh = 0f,
-                maxSpeedKmh = stats.maxSpeedKmh
+                maxSpeedKmh = 0f,
+                topSpeedStatus = status
             )
         }
     }
@@ -93,7 +105,13 @@ class SpeedometerViewModel(
         staleTimerJob = null
         lastFixTimeMillis = 0L
         sessionTracker.reset()
-        state = state.copy(currentSpeedKmh = 0f, maxSpeedKmh = 0f, satelliteCount = 0, maxSatelliteCount = 0)
+        state = state.copy(
+            currentSpeedKmh = 0f,
+            maxSpeedKmh = 0f,
+            satelliteCount = 0,
+            maxSatelliteCount = 0,
+            topSpeedStatus = TopSpeedStatus.INVALID
+        )
         errorMessage = null
     }
     

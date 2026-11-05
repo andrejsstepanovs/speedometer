@@ -1,11 +1,13 @@
 package com.legitdev.speedometer.app
 
 import com.legitdev.speedometer.app.domain.GpsSignalFilter
+import com.legitdev.speedometer.app.domain.STALE_TIMEOUT_MS
 import com.legitdev.speedometer.app.domain.SessionStatisticsTracker
 import com.legitdev.speedometer.app.domain.TimeProvider
 import com.legitdev.speedometer.app.domain.model.GpsReading
 import com.legitdev.speedometer.app.domain.model.SessionConfig
 import com.legitdev.speedometer.app.domain.model.SpeedUnit
+import com.legitdev.speedometer.app.domain.model.TopSpeedStatus
 import com.legitdev.speedometer.app.domain.repository.SettingsRepository
 import com.legitdev.speedometer.app.domain.util.SpeedConverter
 import kotlinx.coroutines.Dispatchers
@@ -214,5 +216,81 @@ class SpeedometerViewModelTest {
         assertFalse(viewModel.isPipTransparent)
 
         assertEquals(listOf(true, false), settingsRepository.savedPipValues)
+    }
+
+    @Test
+    fun `valid fix sets top speed status to valid`() {
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+
+        assertEquals(10f, viewModel.state.maxSpeedKmh, 0.01f)
+        assertEquals(TopSpeedStatus.VALID, viewModel.state.topSpeedStatus)
+    }
+
+    @Test
+    fun `invalid fix clears display top speed and sets invalid status`() {
+        val strictFilter = GpsSignalFilter(acceptingConfig.copy(maxAccuracyMeters = 10f), timeProvider)
+        val viewModel = SpeedometerViewModel(sessionTracker, strictFilter, settingsRepository, timeProvider)
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+        assertEquals(TopSpeedStatus.VALID, viewModel.state.topSpeedStatus)
+
+        val invalidReading = GpsReading(
+            speedMetersPerSecond = SpeedConverter.kmhToMetersPerSecond(50f),
+            accuracyMeters = 50f,
+            satelliteCount = 3,
+            timestamp = timeProvider.currentTimeMillis()
+        )
+        viewModel.onGpsReadingReceived(invalidReading)
+
+        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
+        assertEquals(TopSpeedStatus.INVALID, viewModel.state.topSpeedStatus)
+    }
+
+    @Test
+    fun `stale fix clears display top speed and sets stale status`() {
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+        assertEquals(TopSpeedStatus.VALID, viewModel.state.topSpeedStatus)
+
+        val staleReading = GpsReading(
+            speedMetersPerSecond = SpeedConverter.kmhToMetersPerSecond(50f),
+            accuracyMeters = 5f,
+            satelliteCount = 3,
+            timestamp = timeProvider.currentTimeMillis() - STALE_TIMEOUT_MS - 1000L
+        )
+        viewModel.onGpsReadingReceived(staleReading)
+
+        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
+        assertEquals(TopSpeedStatus.STALE, viewModel.state.topSpeedStatus)
+    }
+
+    @Test
+    fun `stale timeout clears display top speed and sets stale status`() {
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+
+        timeProvider.now += 2001L
+        testDispatcher.scheduler.advanceTimeBy(2001L)
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
+        assertEquals(TopSpeedStatus.STALE, viewModel.state.topSpeedStatus)
+    }
+
+    @Test
+    fun `session reset clears top speed and sets invalid status`() {
+        val viewModel = createViewModel()
+
+        viewModel.onGpsReadingReceived(readingAtKmh(10f))
+        assertEquals(TopSpeedStatus.VALID, viewModel.state.topSpeedStatus)
+
+        viewModel.onSessionReset()
+
+        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
+        assertEquals(TopSpeedStatus.INVALID, viewModel.state.topSpeedStatus)
     }
 }
