@@ -8,6 +8,7 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import com.legitdev.speedometer.app.domain.time.ProductionTimeProvider
 import com.legitdev.speedometer.app.domain.GpsKickstartPolicy
@@ -98,7 +99,7 @@ class LocationRepositoryImpl(
             speedMetersPerSecond = speedMetersPerSecond,
             accuracyMeters = if (location.hasAccuracy()) location.accuracy else null,
             satelliteCount = currentSatelliteCount,
-            timestamp = timeProvider.currentTimeMillis()
+            timestamp = SystemClock.elapsedRealtime()
         )
     }
 
@@ -148,20 +149,6 @@ class LocationRepositoryImpl(
 
             if (kickstartPolicy.shouldKickstart(count)) {
                 kickstartGpsAcquisition()
-            }
-            
-            val location = lastLocation
-            if (location != null) {
-                val reading = createGpsReading(location, null)
-                onLocationFix?.invoke(reading)
-            } else {
-                val reading = GpsReading(
-                    speedMetersPerSecond = 0f,
-                    accuracyMeters = null,
-                    satelliteCount = currentSatelliteCount,
-                    timestamp = timeProvider.currentTimeMillis()
-                )
-                onLocationFix?.invoke(reading)
             }
         }
     }
