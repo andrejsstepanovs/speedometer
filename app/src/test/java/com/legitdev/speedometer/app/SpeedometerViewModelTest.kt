@@ -129,6 +129,17 @@ class SpeedometerViewModelTest {
     }
 
     @Test
+    fun `new view model starts with empty state`() {
+        val viewModelA = createViewModel()
+        viewModelA.onGpsReadingReceived(readingAtKmh(10f))
+
+        val viewModelB = createViewModel()
+
+        assertEquals(0f, viewModelB.state.currentSpeedKmh, 0.001f)
+        assertEquals(0f, viewModelB.state.maxSpeedKmh, 0.001f)
+    }
+
+    @Test
     fun `power save mode is disabled by default`() {
         val viewModel = createViewModel()
 
