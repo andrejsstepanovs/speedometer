@@ -249,7 +249,7 @@ class MainActivity : ComponentActivity() {
                 lastFixTime = reading.timestamp
                 viewModel.onGpsReadingReceived(reading)
             },
-            onSatelliteCount = { },
+            onSatelliteCount = { count -> viewModel.onSatelliteCountReceived(count) },
             onGpsError = { error ->
                 if (error != null) {
                     viewModel.onError(error)
