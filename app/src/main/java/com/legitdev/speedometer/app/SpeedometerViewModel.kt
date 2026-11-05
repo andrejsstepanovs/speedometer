@@ -66,9 +66,18 @@ class SpeedometerViewModel(
         val validity = gpsSignalFilter.isSignalAcceptable(reading)
         if (validity == FixValidity.VALID) {
             val stats = sessionTracker.update(reading, validity)
+            // Adopt the reading's satellite count only when the live GNSS count is still zero,
+            // so a real count from the GNSS status callback is never overwritten.
+            val satelliteCount = if (state.satelliteCount == 0 && reading.satelliteCount > 0) {
+                reading.satelliteCount
+            } else {
+                state.satelliteCount
+            }
             state = state.copy(
                 currentSpeedKmh = stats.currentSpeedKmh,
                 maxSpeedKmh = stats.maxSpeedKmh,
+                satelliteCount = satelliteCount,
+                maxSatelliteCount = maxOf(state.maxSatelliteCount, satelliteCount),
                 topSpeedStatus = TopSpeedStatus.VALID
             )
         } else {

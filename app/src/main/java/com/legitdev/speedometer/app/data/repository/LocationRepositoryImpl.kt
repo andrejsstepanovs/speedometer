@@ -88,6 +88,11 @@ class LocationRepositoryImpl(
      *
      * The speed source is `Location.getSpeed()` when available. Otherwise, the speed is computed
      * from the positions of [location] and [previousLocation].
+     *
+     * The satellite count comes primarily from the GNSS status callback. As a fallback, when
+     * [currentSatelliteCount] is 0 (for example when the callback could not be registered or has
+     * not fired), the count is read from the location extras using the documented
+     * `"satellites"` key and used when it is greater than 0.
      */
     private fun createGpsReading(location: Location, previousLocation: Location?): GpsReading {
         val speedMetersPerSecond = if (location.hasSpeed()) {
@@ -95,10 +100,15 @@ class LocationRepositoryImpl(
         } else {
             computeSpeedFromPositions(location, previousLocation)
         }
+        val satelliteCount = if (currentSatelliteCount > 0) {
+            currentSatelliteCount
+        } else {
+            location.extras?.getInt(SATELLITE_COUNT_EXTRA)?.takeIf { it > 0 } ?: 0
+        }
         return GpsReading(
             speedMetersPerSecond = speedMetersPerSecond,
             accuracyMeters = if (location.hasAccuracy()) location.accuracy else null,
-            satelliteCount = currentSatelliteCount,
+            satelliteCount = satelliteCount,
             timestamp = SystemClock.elapsedRealtime()
         )
     }
@@ -155,6 +165,7 @@ class LocationRepositoryImpl(
     
     private companion object {
         const val KICKSTART_INTERVAL_MILLIS = 5000L
+        const val SATELLITE_COUNT_EXTRA = "satellites"
         val KICKSTART_COMMANDS = listOf("force_time_injection", "force_xtra_injection")
     }
 }

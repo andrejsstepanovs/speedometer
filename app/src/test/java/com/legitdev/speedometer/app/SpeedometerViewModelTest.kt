@@ -147,6 +147,23 @@ class SpeedometerViewModelTest {
     }
 
     @Test
+    fun `valid reading seeds satellite count when gnss count is zero`() {
+        val viewModel = createViewModel()
+
+        val reading = GpsReading(
+            speedMetersPerSecond = SpeedConverter.kmhToMetersPerSecond(10f),
+            accuracyMeters = 5f,
+            satelliteCount = 5,
+            timestamp = timeProvider.currentTimeMillis()
+        )
+
+        viewModel.onGpsReadingReceived(reading)
+
+        assertEquals(5, viewModel.state.satelliteCount)
+        assertEquals(5, viewModel.state.maxSatelliteCount)
+    }
+
+    @Test
     fun `initial state is zero`() {
         val viewModel = createViewModel()
 
