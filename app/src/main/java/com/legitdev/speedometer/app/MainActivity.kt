@@ -16,7 +16,6 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
-import android.os.SystemClock
 import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -56,25 +55,18 @@ import androidx.lifecycle.lifecycleScope
 
 import com.legitdev.speedometer.app.data.repository.LocationRepositoryImpl
 import com.legitdev.speedometer.app.di.SpeedometerViewModelFactory
-import com.legitdev.speedometer.app.domain.model.GpsReading
 import com.legitdev.speedometer.app.domain.model.SessionConfig
 import com.legitdev.speedometer.app.domain.model.SpeedometerState
 import com.legitdev.speedometer.app.domain.model.SpeedUnit
 import com.legitdev.speedometer.app.domain.util.SpeedConverter
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.Locale
-import kotlin.time.Duration.Companion.milliseconds
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: SpeedometerViewModel by viewModels { SpeedometerViewModelFactory(applicationContext) }
     
     private lateinit var locationRepository: LocationRepositoryImpl
-    private var watchdogJob: Job? = null
-    private var lastFixTime: Long = 0L
 
     private var isInPipMode by mutableStateOf(false)
 
@@ -191,7 +183,6 @@ class MainActivity : ComponentActivity() {
         )
         viewModel.onPowerSaveModeChanged(powerManager.isPowerSaveMode)
         checkPermissionsAndStart()
-        startWatchdog()
         viewModel.onSessionStart()
     }
 
@@ -199,7 +190,6 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         unregisterReceiver(powerSaveReceiver)
         stopLocationTracking()
-        stopWatchdog()
 
         if (!isChangingConfigurations) {
             viewModel.onSessionReset()
@@ -215,25 +205,6 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    private fun startWatchdog() {
-        watchdogJob?.cancel()
-        watchdogJob = lifecycleScope.launch {
-            while (isActive) {
-                delay(1000.milliseconds)
-                val timeSinceLastFix = SystemClock.elapsedRealtime() - lastFixTime
-                if (lastFixTime > 0 && timeSinceLastFix > 2000 && viewModel.state.currentSpeedKmh > 0) {
-                    val fakeReading = GpsReading(0f, null, viewModel.state.satelliteCount, SystemClock.elapsedRealtime())
-                    viewModel.onGpsReadingReceived(fakeReading)
-                }
-            }
-        }
-    }
-
-    private fun stopWatchdog() {
-        watchdogJob?.cancel()
-        watchdogJob = null
-    }
-
     private fun checkPermissionsAndStart() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) 
             == PackageManager.PERMISSION_GRANTED) {
@@ -245,10 +216,7 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun startLocationTracking() {
         locationRepository.startLocationUpdates(
-            onLocationFix = { reading ->
-                lastFixTime = reading.timestamp
-                viewModel.onGpsReadingReceived(reading)
-            },
+            onLocationFix = { reading -> viewModel.onGpsReadingReceived(reading) },
             onSatelliteCount = { count -> viewModel.onSatelliteCountReceived(count) },
             onGpsError = { error ->
                 if (error != null) {
