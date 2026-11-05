@@ -58,6 +58,7 @@ import com.legitdev.speedometer.app.di.SpeedometerViewModelFactory
 import com.legitdev.speedometer.app.domain.model.SessionConfig
 import com.legitdev.speedometer.app.domain.model.SpeedometerState
 import com.legitdev.speedometer.app.domain.model.SpeedUnit
+import com.legitdev.speedometer.app.domain.model.TopSpeedStatus
 import com.legitdev.speedometer.app.domain.util.SpeedConverter
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -446,7 +447,22 @@ fun SpeedometerScreen(
                     )
 
                     val displayMaxSpeed = if (state.displayUnit == SpeedUnit.KMH) state.maxSpeedKmh else SpeedConverter.kmhToMph(state.maxSpeedKmh)
-                    StatRow(label = "top speed", value = "%.1f".format(displayMaxSpeed), labelColor, primaryColor)
+                    val isTopSpeedValid = state.topSpeedStatus == TopSpeedStatus.VALID
+                    val topSpeedValue = if (isTopSpeedValid) {
+                        "%.1f".format(Locale.US, displayMaxSpeed)
+                    } else {
+                        "0.0"
+                    }
+                    val topSpeedColor = if (isTopSpeedValid) primaryColor else tertiaryColor
+                    val topSpeedMarker = if (isTopSpeedValid) null else "NOT LIVE"
+                    StatRow(
+                        label = "top speed",
+                        value = topSpeedValue,
+                        labelColor = labelColor,
+                        valueColor = topSpeedColor,
+                        markerText = topSpeedMarker,
+                        markerColor = tertiaryColor
+                    )
                     StatRow(label = "top satellites", value = "${state.maxSatelliteCount}", labelColor, primaryColor)
                 }
                 
@@ -491,7 +507,14 @@ fun GpsStatusDot(color: Color, isSearching: Boolean) {
 }
 
 @Composable
-fun StatRow(label: String, value: String, labelColor: Color, valueColor: Color) {
+fun StatRow(
+    label: String,
+    value: String,
+    labelColor: Color,
+    valueColor: Color,
+    markerText: String? = null,
+    markerColor: Color = valueColor
+) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
         Text(
             text = "$label: ",
@@ -506,5 +529,14 @@ fun StatRow(label: String, value: String, labelColor: Color, valueColor: Color) 
             fontWeight = FontWeight.Bold,
             fontSize = 14.sp
         )
+        if (markerText != null) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = markerText,
+                color = markerColor,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                fontSize = 14.sp
+            )
+        }
     }
 }
