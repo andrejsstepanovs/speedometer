@@ -59,7 +59,6 @@ class SpeedometerViewModel(
             delay(STALE_TIMEOUT_MILLIS)
             state = state.copy(
                 currentSpeedKmh = 0f,
-                maxSpeedKmh = 0f,
                 topSpeedStatus = TopSpeedStatus.STALE
             )
         }
@@ -83,7 +82,6 @@ class SpeedometerViewModel(
             }
             state = state.copy(
                 currentSpeedKmh = 0f,
-                maxSpeedKmh = 0f,
                 topSpeedStatus = status
             )
         }

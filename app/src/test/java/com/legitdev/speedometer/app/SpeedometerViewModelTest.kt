@@ -245,7 +245,7 @@ class SpeedometerViewModelTest {
     }
 
     @Test
-    fun `invalid fix clears display top speed and sets invalid status`() {
+    fun `invalid fix preserves display top speed and sets invalid status`() {
         val strictFilter = GpsSignalFilter(acceptingConfig.copy(maxAccuracyMeters = 10f), timeProvider)
         val viewModel = SpeedometerViewModel(sessionTracker, strictFilter, settingsRepository, timeProvider)
 
@@ -260,12 +260,12 @@ class SpeedometerViewModelTest {
         )
         viewModel.onGpsReadingReceived(invalidReading)
 
-        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
+        assertEquals(10f, viewModel.state.maxSpeedKmh, 0.01f)
         assertEquals(TopSpeedStatus.INVALID, viewModel.state.topSpeedStatus)
     }
 
     @Test
-    fun `stale fix clears display top speed and sets stale status`() {
+    fun `stale fix preserves display top speed and sets stale status`() {
         val viewModel = createViewModel()
 
         viewModel.onGpsReadingReceived(readingAtKmh(10f))
@@ -279,12 +279,12 @@ class SpeedometerViewModelTest {
         )
         viewModel.onGpsReadingReceived(staleReading)
 
-        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
+        assertEquals(10f, viewModel.state.maxSpeedKmh, 0.01f)
         assertEquals(TopSpeedStatus.STALE, viewModel.state.topSpeedStatus)
     }
 
     @Test
-    fun `stale timeout clears display top speed and sets stale status`() {
+    fun `stale timeout preserves display top speed and sets stale status`() {
         val viewModel = createViewModel()
 
         viewModel.onGpsReadingReceived(readingAtKmh(10f))
@@ -293,7 +293,7 @@ class SpeedometerViewModelTest {
         testDispatcher.scheduler.advanceTimeBy(2001L)
         testDispatcher.scheduler.runCurrent()
 
-        assertEquals(0f, viewModel.state.maxSpeedKmh, 0.001f)
+        assertEquals(10f, viewModel.state.maxSpeedKmh, 0.01f)
         assertEquals(TopSpeedStatus.STALE, viewModel.state.topSpeedStatus)
     }
 

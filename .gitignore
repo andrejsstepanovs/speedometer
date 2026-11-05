@@ -49,3 +49,5 @@ app/release-key.jks
 keystore.properties
 
 .vscode/
+# Kotlin session dir
+.kotlin/

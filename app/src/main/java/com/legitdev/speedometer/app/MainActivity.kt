@@ -484,11 +484,7 @@ fun SpeedometerScreen(
 
                     val displayMaxSpeed = if (state.displayUnit == SpeedUnit.KMH) state.maxSpeedKmh else SpeedConverter.kmhToMph(state.maxSpeedKmh)
                     val isTopSpeedValid = state.topSpeedStatus == TopSpeedStatus.VALID
-                    val topSpeedValue = if (isTopSpeedValid) {
-                        "%.1f".format(Locale.US, displayMaxSpeed)
-                    } else {
-                        "0.0"
-                    }
+                    val topSpeedValue = "%.1f".format(Locale.US, displayMaxSpeed)
                     val topSpeedColor = if (isTopSpeedValid) primaryColor else tertiaryColor
                     val topSpeedMarker = if (isTopSpeedValid) null else "NOT LIVE"
                     StatRow(
